@@ -1,7 +1,9 @@
 package main
 
 import (
-	"log"
+	"os"
+	"os/signal"
+	"syscall"
 
 	mqtt "github.com/mochi-co/mqtt/v2"
 	"github.com/mochi-co/mqtt/v2/hooks/auth"
@@ -10,6 +12,10 @@ import (
 
 func main() {
 	tcpAddr := ":1883"
+
+	done := make(chan bool, 1)
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 
 	// Create the new MQTT Server.
 	server := mqtt.New(nil)
@@ -21,11 +27,21 @@ func main() {
 	tcp := listeners.NewTCP("t1", tcpAddr, nil)
 	err := server.AddListener(tcp)
 	if err != nil {
-		log.Fatal(err)
+		server.Log.Error().Err(err)
 	}
 
 	err = server.Serve()
 	if err != nil {
-		log.Fatal(err)
+		server.Log.Error().Err(err)
 	}
+
+	go func() {
+		sig := <-sigs
+		server.Log.Info().Msg(sig.String())
+		done <- true
+	}()
+
+	server.Log.Info().Msg("awaiting signal")
+	<-done
+	server.Log.Info().Msg("exiting")
 }
