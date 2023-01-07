@@ -1,13 +1,14 @@
 package main
 
 import (
+	"bytes"
 	"os"
 	"os/signal"
 	"syscall"
 
 	mqtt "github.com/mochi-co/mqtt/v2"
-	"github.com/mochi-co/mqtt/v2/hooks/auth"
 	"github.com/mochi-co/mqtt/v2/listeners"
+	"github.com/mochi-co/mqtt/v2/packets"
 )
 
 func main() {
@@ -20,8 +21,9 @@ func main() {
 	// Create the new MQTT Server.
 	server := mqtt.New(nil)
 
-	// Allow all connections.
-	_ = server.AddHook(new(auth.AllowHook), nil)
+	// Setup auth hook
+	authHook := &AuthHook{}
+	_ = server.AddHook(authHook, nil)
 
 	// Create a TCP listener on a standard port.
 	tcp := listeners.NewTCP("t1", tcpAddr, nil)
@@ -30,11 +32,13 @@ func main() {
 		server.Log.Error().Err(err)
 	}
 
+	// Start
 	err = server.Serve()
 	if err != nil {
 		server.Log.Error().Err(err)
 	}
 
+	// Handle signals
 	go func() {
 		sig := <-sigs
 		server.Log.Info().Msg(sig.String())
@@ -44,4 +48,27 @@ func main() {
 	server.Log.Info().Msg("awaiting signal")
 	<-done
 	server.Log.Info().Msg("exiting")
+}
+
+type AuthHook struct {
+	mqtt.HookBase
+}
+
+func (h *AuthHook) ID() string {
+	return "mqtt2http-auth"
+}
+
+func (h *AuthHook) Provides(b byte) bool {
+	return bytes.Contains([]byte{
+		mqtt.OnConnectAuthenticate,
+		mqtt.OnACLCheck,
+	}, []byte{b})
+}
+
+func (h *AuthHook) OnConnectAuthenticate(cl *mqtt.Client, pk packets.Packet) bool {
+	return string(cl.Properties.Username) == "test"
+}
+
+func (h *AuthHook) OnACLCheck(cl *mqtt.Client, topic string, write bool) bool {
+	return true
 }
