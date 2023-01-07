@@ -12,5 +12,4 @@ require (
 	github.com/rs/xid v1.4.0 // indirect
 	github.com/rs/zerolog v1.28.0 // indirect
 	golang.org/x/sys v0.0.0-20220728004956-3c1f35247d10 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

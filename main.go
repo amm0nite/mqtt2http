@@ -12,6 +12,7 @@ import (
 )
 
 func main() {
+	var err error
 	tcpAddr := ":1883"
 
 	done := make(chan bool, 1)
@@ -23,11 +24,21 @@ func main() {
 
 	// Setup auth hook
 	authHook := &AuthHook{}
-	_ = server.AddHook(authHook, nil)
+	err = server.AddHook(authHook, nil)
+	if err != nil {
+		server.Log.Error().Err(err)
+	}
+
+	// Setup publish hook
+	publishHook := &PublishHook{}
+	err = server.AddHook(publishHook, map[string]any{})
+	if err != nil {
+		server.Log.Error().Err(err)
+	}
 
 	// Create a TCP listener on a standard port.
 	tcp := listeners.NewTCP("t1", tcpAddr, nil)
-	err := server.AddListener(tcp)
+	err = server.AddListener(tcp)
 	if err != nil {
 		server.Log.Error().Err(err)
 	}
@@ -71,4 +82,35 @@ func (h *AuthHook) OnConnectAuthenticate(cl *mqtt.Client, pk packets.Packet) boo
 
 func (h *AuthHook) OnACLCheck(cl *mqtt.Client, topic string, write bool) bool {
 	return true
+}
+
+type PublishHook struct {
+	mqtt.HookBase
+}
+
+func (h *PublishHook) ID() string {
+	return "mqtt2http-publish"
+}
+
+func (h *PublishHook) Provides(b byte) bool {
+	return bytes.Contains([]byte{
+		mqtt.OnPublish,
+	}, []byte{b})
+}
+
+func (h *PublishHook) Init(config any) error {
+	h.Log.Info().Msg("initialised")
+	return nil
+}
+
+func (h *PublishHook) OnPublish(cl *mqtt.Client, pk packets.Packet) (packets.Packet, error) {
+	h.Log.Info().Str("client", cl.ID).Str("payload", string(pk.Payload)).Msg("received from client")
+
+	pkx := pk
+	if string(pk.Payload) == "hello" {
+		pkx.Payload = []byte("hello world")
+		h.Log.Info().Str("client", cl.ID).Str("payload", string(pkx.Payload)).Msg("received modified packet from client")
+	}
+
+	return pkx, nil
 }
