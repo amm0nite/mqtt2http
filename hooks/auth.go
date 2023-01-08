@@ -27,7 +27,11 @@ func (h *AuthHook) Provides(b byte) bool {
 func (h *AuthHook) OnConnectAuthenticate(cl *mqtt.Client, pk packets.Packet) bool {
 	username := string(cl.Properties.Username)
 	password := string(pk.Connect.Password)
-	return h.Client.Authorize(username, password)
+	res, err := h.Client.Authorize(username, password)
+	if err != nil {
+		h.Log.Error().Err(err).Msg("Auth request failed")
+	}
+	return res
 }
 
 func (h *AuthHook) OnACLCheck(cl *mqtt.Client, topic string, write bool) bool {
