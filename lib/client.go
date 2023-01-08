@@ -17,7 +17,7 @@ type Client struct {
 func (c *Client) Authorize(username string, password string) (bool, error) {
 	client := &http.Client{}
 
-	req, err := http.NewRequest("GET", c.AuthorizeURL, nil)
+	req, err := http.NewRequest("POST", c.AuthorizeURL, nil)
 	if err != nil {
 		return false, err
 	}
