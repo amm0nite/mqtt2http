@@ -2,6 +2,7 @@ package hooks
 
 import (
 	"bytes"
+	"mqtt2http/lib"
 
 	mqtt "github.com/mochi-co/mqtt/v2"
 	"github.com/mochi-co/mqtt/v2/packets"
@@ -9,6 +10,7 @@ import (
 
 type AuthHook struct {
 	mqtt.HookBase
+	Client *lib.Client
 }
 
 func (h *AuthHook) ID() string {
@@ -23,7 +25,9 @@ func (h *AuthHook) Provides(b byte) bool {
 }
 
 func (h *AuthHook) OnConnectAuthenticate(cl *mqtt.Client, pk packets.Packet) bool {
-	return string(cl.Properties.Username) == "test"
+	username := string(cl.Properties.Username)
+	password := string(pk.Connect.Password)
+	return h.Client.Authorize(username, password)
 }
 
 func (h *AuthHook) OnACLCheck(cl *mqtt.Client, topic string, write bool) bool {
