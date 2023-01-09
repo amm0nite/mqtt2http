@@ -15,7 +15,7 @@ def on_message(client, userdata, msg):
     if msg.topic == "$SYS/broker/uptime":
         uptime = int(msg.payload)
         if uptime % 2 == 0:
-            client.publish("test-topic", "hello")
+            client.publish("mqtt2http", '{ "hello":"world" }')
 
 client = mqtt.Client()
 client.on_connect = on_connect

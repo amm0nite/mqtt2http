@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/mochi-co/mqtt/v2"
 )
@@ -38,7 +39,9 @@ func (c *Client) Authorize(username string, password string) (bool, error) {
 }
 
 func (c *Client) Publish(topic string, payload []byte) error {
+	publishURL := strings.Replace(c.PublishURL, "{topic}", topic, 1)
 	reader := bytes.NewReader(payload)
-	_, err := http.Post(c.PublishURL, "application/octet-stream", reader)
+
+	_, err := http.Post(publishURL, "application/octet-stream", reader)
 	return err
 }

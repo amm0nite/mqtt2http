@@ -30,7 +30,7 @@ func main() {
 
 	tcpAddr := getEnv("MQTT2HTTP_LISTEN_ADDRESS", ":1883")
 	authorizeURL := getEnv("MQTT2HTTP_AUTHORIZE_URL", "http://example.com")
-	publishURL := getEnv("MQTT2HTTP_PUBLISH_URL", "http://example.com")
+	publishURL := getEnv("MQTT2HTTP_PUBLISH_URL", "http://example.com/{topic}")
 
 	client := &lib.Client{
 		Server:       server,
