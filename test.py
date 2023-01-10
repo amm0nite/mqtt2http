@@ -1,3 +1,4 @@
+import json
 import paho.mqtt.client as mqtt
 
 # The callback for when the client receives a CONNACK response from the server.
@@ -15,7 +16,7 @@ def on_message(client, userdata, msg):
     if msg.topic == "$SYS/broker/uptime":
         uptime = int(msg.payload)
         if uptime % 2 == 0:
-            client.publish("mqtt2http", '{ "hello":"world" }')
+            client.publish("mqtt2http", json.dumps({"uptime": uptime}))
 
 client = mqtt.Client()
 client.on_connect = on_connect

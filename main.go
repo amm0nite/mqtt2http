@@ -31,11 +31,13 @@ func main() {
 	tcpAddr := getEnv("MQTT2HTTP_LISTEN_ADDRESS", ":1883")
 	authorizeURL := getEnv("MQTT2HTTP_AUTHORIZE_URL", "http://example.com")
 	publishURL := getEnv("MQTT2HTTP_PUBLISH_URL", "http://example.com/{topic}")
+	contentType := getEnv("MQTT2HTTP_CONTENT_TYPE", "application/octet-stream")
 
 	client := &lib.Client{
 		Server:       server,
 		AuthorizeURL: authorizeURL,
 		PublishURL:   publishURL,
+		ContentType:  contentType,
 	}
 
 	// Setup auth hook

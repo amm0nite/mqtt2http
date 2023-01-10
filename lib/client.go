@@ -13,6 +13,7 @@ type Client struct {
 	Server       *mqtt.Server
 	AuthorizeURL string
 	PublishURL   string
+	ContentType  string
 }
 
 func (c *Client) Authorize(username string, password string) (bool, error) {
@@ -42,6 +43,6 @@ func (c *Client) Publish(topic string, payload []byte) error {
 	publishURL := strings.Replace(c.PublishURL, "{topic}", topic, 1)
 	reader := bytes.NewReader(payload)
 
-	_, err := http.Post(publishURL, "application/octet-stream", reader)
+	_, err := http.Post(publishURL, c.ContentType, reader)
 	return err
 }
