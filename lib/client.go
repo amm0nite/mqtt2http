@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/mochi-co/mqtt/v2"
 )
@@ -16,8 +17,10 @@ type Client struct {
 	ContentType  string
 }
 
+var ClientTimeout = time.Duration(5) * time.Second
+
 func (c *Client) Authorize(username string, password string) (bool, error) {
-	client := &http.Client{}
+	client := &http.Client{Timeout: ClientTimeout}
 
 	req, err := http.NewRequest("POST", c.AuthorizeURL, nil)
 	if err != nil {
@@ -43,6 +46,16 @@ func (c *Client) Publish(topic string, payload []byte) error {
 	publishURL := strings.Replace(c.PublishURL, "{topic}", topic, 1)
 	reader := bytes.NewReader(payload)
 
-	_, err := http.Post(publishURL, c.ContentType, reader)
+	client := &http.Client{Timeout: ClientTimeout}
+
+	req, err := http.NewRequest("POST", publishURL, reader)
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("Content-Type", c.ContentType)
+	req.Header.Set("Topic", topic)
+
+	_, err = client.Do(req)
 	return err
 }
