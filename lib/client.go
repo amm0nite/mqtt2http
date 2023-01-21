@@ -15,6 +15,7 @@ type Client struct {
 	AuthorizeURL string
 	PublishURL   string
 	ContentType  string
+	TopicHeader  string
 }
 
 var ClientTimeout = time.Duration(5) * time.Second
@@ -54,7 +55,7 @@ func (c *Client) Publish(topic string, payload []byte) error {
 	}
 
 	req.Header.Set("Content-Type", c.ContentType)
-	req.Header.Set("Topic", topic)
+	req.Header.Set(c.TopicHeader, topic)
 
 	_, err = client.Do(req)
 	return err
