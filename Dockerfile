@@ -1,11 +1,20 @@
-FROM golang:1.18
+FROM golang:1.18 as build
 
-WORKDIR /usr/src/app
+WORKDIR /workspace
 
 COPY go.mod go.sum ./
 RUN go mod download && go mod verify
 
 COPY . .
-RUN go build -v -o /usr/local/bin/app ./cmd/mqtt2http/mqtt2http.go
+RUN go build -v -o app ./cmd/mqtt2http/mqtt2http.go
 
-CMD ["app"]
+FROM debian:bullseye
+
+RUN useradd app
+USER app
+
+WORKDIR /home/app
+
+COPY --from=build /workspace/app ./
+
+CMD ["./app"]
