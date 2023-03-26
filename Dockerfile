@@ -10,6 +10,8 @@ RUN go build -v -o app ./cmd/mqtt2http/mqtt2http.go
 
 FROM debian:bullseye
 
+RUN apt-get update && apt-get install -y ca-certificates
+
 RUN useradd app
 USER app
 
