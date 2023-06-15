@@ -1,4 +1,4 @@
-FROM golang:1.18 as build
+FROM golang:1.20-bookworm as build
 
 WORKDIR /workspace
 
@@ -8,7 +8,7 @@ RUN go mod download && go mod verify
 COPY . .
 RUN go build -v -o app ./cmd/mqtt2http/mqtt2http.go
 
-FROM debian:bullseye
+FROM debian:bookworm
 
 RUN apt-get update && apt-get install -y ca-certificates
 
