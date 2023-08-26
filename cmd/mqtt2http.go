@@ -1,8 +1,10 @@
 package main
 
 import (
+	"mqtt2http/api"
 	"mqtt2http/hooks"
 	"mqtt2http/lib"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -28,7 +30,8 @@ func main() {
 		server.Log.Warn().Err(err).Msg("Failed to read .env file")
 	}
 
-	tcpAddr := getEnv("MQTT2HTTP_LISTEN_ADDRESS", ":1883")
+	tcpAddr := getEnv("MQTT2HTTP_MQTT_LISTEN_ADDRESS", ":1883")
+	httpAddr := getEnv("MQTT2HTTP_HTTP_LISTEN_ADDRESS", ":8080")
 	authorizeURL := getEnv("MQTT2HTTP_AUTHORIZE_URL", "http://example.com")
 	publishURL := getEnv("MQTT2HTTP_PUBLISH_URL", "http://example.com/{topic}")
 	contentType := getEnv("MQTT2HTTP_CONTENT_TYPE", "application/octet-stream")
@@ -74,6 +77,18 @@ func main() {
 		sig := <-sigs
 		server.Log.Info().Msg(sig.String())
 		done <- true
+	}()
+
+	// HTTP server
+	go func() {
+		controller := api.CreateController(server, client)
+		http.HandleFunc("/", controller.RootHandler())
+		http.HandleFunc("/publish", controller.PublishHandler())
+
+		err := http.ListenAndServe(httpAddr, nil)
+		if err != nil {
+			server.Log.Error().Err(err).Msg("HTTP server error")
+		}
 	}()
 
 	server.Log.Info().Msg("awaiting signal")
