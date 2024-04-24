@@ -30,6 +30,7 @@ func (h *AuthHook) OnConnectAuthenticate(cl *mqtt.Client, pk packets.Packet) boo
 	res, err := h.Client.Authorize(username, password)
 	if err != nil {
 		h.Log.Error().Err(err).Msg("Auth request failed")
+		return false
 	}
 	return res
 }
