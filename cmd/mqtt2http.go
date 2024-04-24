@@ -12,6 +12,7 @@ import (
 	"github.com/joho/godotenv"
 	mqtt "github.com/mochi-co/mqtt/v2"
 	"github.com/mochi-co/mqtt/v2/listeners"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func main() {
@@ -36,6 +37,7 @@ func main() {
 	publishURL := getEnv("MQTT2HTTP_PUBLISH_URL", "http://example.com/{topic}")
 	contentType := getEnv("MQTT2HTTP_CONTENT_TYPE", "application/octet-stream")
 	topicHeader := getEnv("MQTT2HTTP_TOPIC_HEADER", "X-Topic")
+	metricsHttpAddr := getEnv("MQTT2HTTP_METRICS_HTTP_LISTEN_ADDRESS", ":9090")
 
 	client := &lib.Client{
 		Server:       server,
@@ -81,15 +83,32 @@ func main() {
 
 	// HTTP server
 	go func() {
-		controller := api.CreateController(server, client)
-		http.HandleFunc("/", controller.RootHandler())
-		http.HandleFunc("/publish", controller.PublishHandler())
+		server.Log.Info().Str("Addr", httpAddr).Msg("Starting API HTTP server")
 
-		err := http.ListenAndServe(httpAddr, nil)
+		controller := api.CreateController(server, client)
+
+		mux := http.NewServeMux()
+		mux.HandleFunc("/", controller.RootHandler())
+		mux.HandleFunc("/publish", controller.PublishHandler())
+
+		err := http.ListenAndServe(httpAddr, mux)
 		if err != nil {
-			server.Log.Error().Err(err).Msg("HTTP server error")
+			server.Log.Error().Err(err).Msg("API HTTP server error")
 		}
 	}()
+
+	// Metrics HTTP server
+	go (func() {
+		server.Log.Info().Str("Addr", metricsHttpAddr).Msg("Starting metrics HTTP server")
+
+		mux := http.NewServeMux()
+		mux.Handle("/metrics", promhttp.Handler())
+
+		err := http.ListenAndServe(metricsHttpAddr, mux)
+		if err != nil {
+			server.Log.Error().Err(err).Msg("Metrics HTTP server error")
+		}
+	})()
 
 	server.Log.Info().Msg("awaiting signal")
 	<-done
