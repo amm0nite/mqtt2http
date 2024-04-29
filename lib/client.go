@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/mochi-co/mqtt/v2"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 type Client struct {
@@ -16,6 +18,7 @@ type Client struct {
 	PublishURL   string
 	ContentType  string
 	TopicHeader  string
+	Metrics      *Metrics
 }
 
 var ClientTimeout = time.Duration(5) * time.Second
@@ -34,6 +37,8 @@ func (c *Client) Authorize(username string, password string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+
+	c.Metrics.authenticateCounter.With(prometheus.Labels{"code": strconv.Itoa(res.StatusCode)}).Inc()
 
 	success := res.StatusCode == 200 || res.StatusCode == 201
 	if !success {
@@ -57,6 +62,16 @@ func (c *Client) Publish(topic string, payload []byte) error {
 	req.Header.Set("Content-Type", c.ContentType)
 	req.Header.Set(c.TopicHeader, topic)
 
-	_, err = client.Do(req)
-	return err
+	res, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+
+	labels := prometheus.Labels{
+		"code":  strconv.Itoa(res.StatusCode),
+		"topic": topic,
+	}
+	c.Metrics.publishCounter.With(labels).Inc()
+
+	return nil
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"mqtt2http/api"
 	"mqtt2http/hooks"
 	"mqtt2http/lib"
@@ -16,8 +17,6 @@ import (
 )
 
 func main() {
-	var err error
-
 	done := make(chan bool, 1)
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
@@ -25,10 +24,36 @@ func main() {
 	// Create the new MQTT Server.
 	server := mqtt.New(nil)
 
+	err := run(server)
+	if err != nil {
+		server.Log.Error().Err(err).Msg("Error:")
+		panic(err)
+	}
+
+	// Handle signals
+	go func() {
+		sig := <-sigs
+		server.Log.Info().Msg(sig.String())
+		done <- true
+	}()
+
+	server.Log.Info().Msg("Awaiting signal")
+	<-done
+	server.Log.Info().Msg("Exiting")
+}
+
+func run(server *mqtt.Server) error {
+	var err error
+
 	// Create HTTP Client
 	err = godotenv.Load()
 	if err != nil {
 		server.Log.Warn().Err(err).Msg("Failed to read .env file")
+	}
+
+	metrics, err := lib.NewMetrics()
+	if err != nil {
+		return fmt.Errorf("failed to setup metrics: %w", err)
 	}
 
 	tcpAddr := getEnv("MQTT2HTTP_MQTT_LISTEN_ADDRESS", ":1883")
@@ -45,41 +70,35 @@ func main() {
 		PublishURL:   publishURL,
 		ContentType:  contentType,
 		TopicHeader:  topicHeader,
+		Metrics:      metrics,
 	}
 
 	// Setup auth hook
 	authHook := &hooks.AuthHook{Client: client}
 	err = server.AddHook(authHook, nil)
 	if err != nil {
-		server.Log.Error().Err(err).Msg("Failed to add auth hook")
+		return fmt.Errorf("failed to add auth hook: %w", err)
 	}
 
 	// Setup publish hook
 	publishHook := &hooks.PublishHook{Client: client}
 	err = server.AddHook(publishHook, map[string]any{})
 	if err != nil {
-		server.Log.Error().Err(err).Msg("Failed to add publish hook")
+		return fmt.Errorf("failed to add publish hook: %w", err)
 	}
 
 	// Create a TCP listener on a standard port.
 	tcp := listeners.NewTCP("t1", tcpAddr, nil)
 	err = server.AddListener(tcp)
 	if err != nil {
-		server.Log.Error().Err(err).Msg("Failed to add TCP listener")
+		return fmt.Errorf("failed to add TCP listener: %w", err)
 	}
 
 	// Start
 	err = server.Serve()
 	if err != nil {
-		server.Log.Error().Err(err).Msg("Failed to start server")
+		return fmt.Errorf("failed to start server: %w", err)
 	}
-
-	// Handle signals
-	go func() {
-		sig := <-sigs
-		server.Log.Info().Msg(sig.String())
-		done <- true
-	}()
 
 	// HTTP server
 	go func() {
@@ -110,9 +129,7 @@ func main() {
 		}
 	})()
 
-	server.Log.Info().Msg("awaiting signal")
-	<-done
-	server.Log.Info().Msg("exiting")
+	return nil
 }
 
 func getEnv(key, fallback string) string {
