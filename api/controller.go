@@ -6,7 +6,7 @@ import (
 	"mqtt2http/lib"
 	"net/http"
 
-	"github.com/mochi-co/mqtt/v2"
+	mqtt "github.com/mochi-mqtt/server/v2"
 )
 
 type Controller struct {
@@ -64,7 +64,7 @@ func (c *Controller) PublishHandler() http.HandlerFunc {
 			return
 		}
 
-		c.server.Log.Info().Str("topic", topic).Msg("publish message")
+		c.server.Log.Info("Publish message", "topic", topic)
 		c.server.Publish(topic, message, false, 0)
 		writer.Write(message)
 	}

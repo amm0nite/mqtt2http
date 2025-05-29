@@ -11,8 +11,8 @@ import (
 	"syscall"
 
 	"github.com/joho/godotenv"
-	mqtt "github.com/mochi-co/mqtt/v2"
-	"github.com/mochi-co/mqtt/v2/listeners"
+	mqtt "github.com/mochi-mqtt/server/v2"
+	"github.com/mochi-mqtt/server/v2/listeners"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
@@ -24,31 +24,31 @@ func main() {
 	// Create the new MQTT Server.
 	server := mqtt.New(nil)
 
-	err := run(server)
+	err := start(server)
 	if err != nil {
-		server.Log.Error().Err(err).Msg("Error:")
+		server.Log.Error("Failed to start", "err", err)
 		panic(err)
 	}
 
 	// Handle signals
 	go func() {
 		sig := <-sigs
-		server.Log.Info().Msg(sig.String())
+		server.Log.Info("Signal received", "signal", sig.String())
 		done <- true
 	}()
 
-	server.Log.Info().Msg("Awaiting signal")
+	server.Log.Info("Awaiting signal")
 	<-done
-	server.Log.Info().Msg("Exiting")
+	server.Log.Info("Exiting")
 }
 
-func run(server *mqtt.Server) error {
+func start(server *mqtt.Server) error {
 	var err error
 
 	// Create HTTP Client
 	err = godotenv.Load()
 	if err != nil {
-		server.Log.Warn().Err(err).Msg("Failed to read .env file")
+		server.Log.Warn("Failed to read .env file", "err", err)
 	}
 
 	metrics, err := lib.NewMetrics()
@@ -88,7 +88,8 @@ func run(server *mqtt.Server) error {
 	}
 
 	// Create a TCP listener on a standard port.
-	tcp := listeners.NewTCP("t1", tcpAddr, nil)
+	options := listeners.Config{ID: "t1", Address: tcpAddr}
+	tcp := listeners.NewTCP(options)
 	err = server.AddListener(tcp)
 	if err != nil {
 		return fmt.Errorf("failed to add TCP listener: %w", err)
@@ -102,7 +103,7 @@ func run(server *mqtt.Server) error {
 
 	// HTTP server
 	go func() {
-		server.Log.Info().Str("Addr", httpAddr).Msg("Starting API HTTP server")
+		server.Log.Info("Starting API HTTP server", "addr", httpAddr)
 
 		controller := api.CreateController(server, client)
 
@@ -112,20 +113,20 @@ func run(server *mqtt.Server) error {
 
 		err := http.ListenAndServe(httpAddr, mux)
 		if err != nil {
-			server.Log.Error().Err(err).Msg("API HTTP server error")
+			server.Log.Error("API HTTP server stopped", "err", err)
 		}
 	}()
 
 	// Metrics HTTP server
 	go (func() {
-		server.Log.Info().Str("Addr", metricsHttpAddr).Msg("Starting metrics HTTP server")
+		server.Log.Info("Starting metrics HTTP server", "addr", metricsHttpAddr)
 
 		mux := http.NewServeMux()
 		mux.Handle("/metrics", promhttp.Handler())
 
 		err := http.ListenAndServe(metricsHttpAddr, mux)
 		if err != nil {
-			server.Log.Error().Err(err).Msg("Metrics HTTP server error")
+			server.Log.Error("Metrics HTTP server stopped", "err", err)
 		}
 	})()
 

@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"mqtt2http/lib"
 
-	mqtt "github.com/mochi-co/mqtt/v2"
-	"github.com/mochi-co/mqtt/v2/packets"
+	mqtt "github.com/mochi-mqtt/server/v2"
+	"github.com/mochi-mqtt/server/v2/packets"
 )
 
 type AuthHook struct {
@@ -24,12 +24,17 @@ func (h *AuthHook) Provides(b byte) bool {
 	}, []byte{b})
 }
 
+func (h *AuthHook) Init(config any) error {
+	h.Log.Info("Initialized")
+	return nil
+}
+
 func (h *AuthHook) OnConnectAuthenticate(cl *mqtt.Client, pk packets.Packet) bool {
 	username := string(cl.Properties.Username)
 	password := string(pk.Connect.Password)
 	res, err := h.Client.Authorize(username, password)
 	if err != nil {
-		h.Log.Error().Err(err).Msg("Auth request failed")
+		h.Log.Error("Auth request failed", "err", err)
 		return false
 	}
 	return res

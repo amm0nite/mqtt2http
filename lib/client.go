@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mochi-co/mqtt/v2"
+	mqtt "github.com/mochi-mqtt/server/v2"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
