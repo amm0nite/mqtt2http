@@ -31,5 +31,8 @@ func (h *PublishHook) Init(config any) error {
 func (h *PublishHook) OnPublish(cl *mqtt.Client, pk packets.Packet) (packets.Packet, error) {
 	h.Log.Info("Received from client", "client", cl.ID, "topic", pk.TopicName, "payload", string(pk.Payload))
 	err := h.Client.Publish(pk.TopicName, pk.Payload)
-	return pk, err
+	if err != nil {
+		h.Log.Error("Failed to post on publish", "err", err, "client", cl.ID, "topic", pk.TopicName)
+	}
+	return pk, nil
 }
