@@ -42,7 +42,7 @@ func (c *Client) Authorize(username string, password string) (bool, error) {
 
 	success := res.StatusCode == 200 || res.StatusCode == 201
 	if !success {
-		return false, fmt.Errorf("request failed with status code %d", res.StatusCode)
+		return false, fmt.Errorf("auth post failed with status code %d", res.StatusCode)
 	}
 
 	return true, nil
@@ -72,6 +72,10 @@ func (c *Client) Publish(topic string, payload []byte) error {
 		"topic": topic,
 	}
 	c.Metrics.publishCounter.With(labels).Inc()
+
+	if res.StatusCode != 200 && res.StatusCode != 201 {
+		return fmt.Errorf("publish post failed with status %d", res.StatusCode)
+	}
 
 	return nil
 }
