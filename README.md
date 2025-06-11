@@ -4,10 +4,16 @@ MQTT broker with hooks to send authentication and publish events as HTTP request
 
 This MQTT broker receives MQTT messages with a topic on port 1883 and forwards them as POST requests to an HTTP service (see `MQTT2HTTP_PUBLISH_URL`). 
 The topic is either included in the URL or forwarded as the HTTP header X-Topic (see `MQTT2HTTP_TOPIC_HEADER` for customization).
-For any MQTT message that includes authentication information, the broker sends an HTTP Basic request to `MQTT2HTTP_AUTHORIZE_URL` to validate the username:password.
+When a client connects to the broker, it will send an HTTP POST request to `MQTT2HTTP_AUTHORIZE_URL`  with the client credentials as HTTP Basic Auth to validate the username and password.
 
-There is also a small web interface available at `http://localhost:8080/publish?topic=...` (see `MQTT2HTTP_HTTP_LISTEN_ADDRESS` to customize the port). 
-The service requires HTTP Basic authentication. If authentication succeeds, the body is forwarded just like an MQTT message to `MQTT2HTTP_PUBLISH_URL` with the given topic.
+# http2mqtt
+
+There is also an API endpoint available to be used as http2mqtt at `http://localhost:8080/publish?topic=...` (see `MQTT2HTTP_HTTP_LISTEN_ADDRESS` to customize the port). 
+It will publish the body of a POST request to the topic passed as query parameter. The service requires HTTP Basic authentication.
+
+    curl --user username:password -X POST -d '{"test": true}' http://mqtt2http:8080/publish?topic=test
+
+This example will publish the message `{"test": true}` to the topic `test`.
 
 # Run with Docker
 
