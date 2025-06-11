@@ -22,7 +22,10 @@ func main() {
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 
 	// Create the new MQTT Server.
-	server := mqtt.New(nil)
+	options := &mqtt.Options{
+		InlineClient: true,
+	}
+	server := mqtt.New(options)
 
 	err := start(server)
 	if err != nil {
