@@ -1,6 +1,11 @@
-FROM golang:1.24.3-bookworm AS build
+# Build stage
+FROM golang:1.24.3-alpine AS build
 
 WORKDIR /workspace
+
+RUN apk add --no-cache ca-certificates
+
+ENV CGO_ENABLED=0 GOOS=linux
 
 COPY go.mod go.sum ./
 RUN go mod download && go mod verify
@@ -8,13 +13,14 @@ RUN go mod download && go mod verify
 COPY . .
 RUN go build -v -o app ./cmd/mqtt2http.go
 
-FROM debian:bookworm
+# Run stage
+FROM alpine
 
-RUN apt-get update && apt-get install -y ca-certificates
+RUN apk add --no-cache ca-certificates
 
-RUN useradd app
+RUN adduser -D app
+
 USER app
-
 WORKDIR /home/app
 
 COPY --from=build /workspace/app ./
