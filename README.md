@@ -32,6 +32,11 @@ This tool is published as `amm0nite/mqtt2http` on Docker Hub. You can run it, fo
 
 This will expose the MQTT port (1883), the HTTP publish interface (on port 8080), and a Prometheus metrics endpoint (on port 9090).
 
+For a specific release version, you can pin the Docker image to that tag:
+
+    mqtt2http:
+      image: "docker.io/amm0nite/mqtt2http:1.0.0"
+
 # Configuration
 
 The mqtt2http tool provides several configuration options:
