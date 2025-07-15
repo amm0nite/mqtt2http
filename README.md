@@ -1,92 +1,83 @@
-# mqtt2http
+# MQTT2HTTP
 
-MQTT broker with hooks to send authentication and publish events as HTTP requests.
+A simple MQTT broker that connects to your HTTP services for login and message handling.
 
-This MQTT broker receives MQTT messages with a topic on port 1883 and forwards them as POST requests to an HTTP service (see `MQTT2HTTP_PUBLISH_URL`). 
-The topic is either included in the URL or forwarded as the HTTP header X-Topic (see `MQTT2HTTP_TOPIC_HEADER` for customization).
-When a client connects to the broker, it will send an HTTP POST request to `MQTT2HTTP_AUTHORIZE_URL`  with the client credentials as HTTP Basic Auth to validate the username and password.
+## Table of Contents
 
-# http2mqtt
+* [Features](#features)
+* [Quick Start](#quick-start)
+* [Docker](#docker)
+* [Configuration](#configuration)
+* [Metrics](#metrics)
 
-There is also an API endpoint available to be used as http2mqtt at `http://localhost:8080/publish?topic=...` (see `MQTT2HTTP_HTTP_LISTEN_ADDRESS` to customize the port). 
-It will publish the body of a POST request to the topic passed as query parameter. The service requires HTTP Basic authentication.
+## Features
 
-    curl --user username:password -X POST -d '{"test": true}' http://mqtt2http:8080/publish?topic=test
+* **Authentication**: Validates MQTT `CONNECT` requests using HTTP Basic Auth
+* **MQTT to HTTP**: Forwards `PUBLISH` messages as HTTP `POST` requests
+* **HTTP to MQTT**: Accepts HTTP `POST` requests to publish MQTT messages
+* **Metrics**: Exposes Prometheus-compatible metrics
 
-This example will publish the message `{"test": true}` to the topic `test`.
+## Quick Start
 
-# Run with Docker
+Set the URLs for your HTTP services using environment variables:
 
-This tool is published as `amm0nite/mqtt2http` on Docker Hub. You can run it, for example, using Docker Compose:
+```env
+MQTT2HTTP_AUTHORIZE_URL=http://...
+MQTT2HTTP_PUBLISH_URL=http://...
+```
 
-    mqtt2http:
-      image: "docker.io/amm0nite/mqtt2http:latest"
-      restart: "unless-stopped"
-      ports:
-        - 1883:1883
-        - 8088:8080
-        - 9090:9090
-      environment:
-        MQTT2HTTP_AUTHORIZE_URL: http://auth.service/
-        MQTT2HTTP_PUBLISH_URL: http://backend.service/api/{topic}
+### MQTT to HTTP
 
-This will expose the MQTT port (1883), the HTTP publish interface (on port 8080), and a Prometheus metrics endpoint (on port 9090).
+* When a client connects, its username and password are sent to your authorization endpoint.
+* All MQTT `PUBLISH` messages are forwarded as HTTP `POST` requests to the specified URL.
 
-For a specific release version, you can pin the Docker image to that tag:
+### HTTP to MQTT
 
-    mqtt2http:
-      image: "docker.io/amm0nite/mqtt2http:1.0.0"
+* Publish messages to MQTT topics using the built-in REST API.
 
-# Configuration
+```bash
+curl --user username:password -X POST -d '{"test": true}' http://mqtt2http:8080/publish?topic=hello
+```
 
-The mqtt2http tool provides several configuration options:
+## Docker
 
-- `MQTT2HTTP_MQTT_LISTEN_ADDRESS`
+Run with Docker Compose:
 
-  Default: :1883
+```yaml
+mqtt2http:
+  image: docker.io/amm0nite/mqtt2http:latest
+  ports:
+    - 1883:1883     # MQTT
+    - 8088:8080     # HTTP API
+    - 9090:9090     # Prometheus metrics
+  environment:
+    MQTT2HTTP_AUTHORIZE_URL: http://auth.service/
+    MQTT2HTTP_PUBLISH_URL: http://backend.service/api/{topic}
+```
 
-  The TCP address (host:port) on which the embedded MQTT broker will listen for client connections.
+To use a specific version:
 
-- `MQTT2HTTP_HTTP_LISTEN_ADDRESS`
+```yaml
+image: docker.io/amm0nite/mqtt2http:1.0.0
+```
 
-  Default: :8080
-  
-  The HTTP address (host:port) for the built-in REST API (/publish endpoint).
+## Configuration
 
-- `MQTT2HTTP_AUTHORIZE_URL`
-  
-  Default: http://example.com
-  
-  The URL to which mqtt2http will POST (with Basic Auth headers) whenever a client attempts to CONNECT. A 200 or 201 response means “allow”; any other response is treated as a failure.
+| Variable                                | Default                      | Description                                                                                    |
+| --------------------------------------- | ---------------------------- | ---------------------------------------------------------------------------------------------- |
+| `MQTT2HTTP_MQTT_LISTEN_ADDRESS`         | `:1883`                      | Address where the MQTT broker listens (host\:port).                                            |
+| `MQTT2HTTP_HTTP_LISTEN_ADDRESS`         | `:8080`                      | Address for the HTTP REST API (`/publish` endpoint).                                           |
+| `MQTT2HTTP_AUTHORIZE_URL`               | `http://example.com`         | HTTP Basic Auth endpoint for authorizing `CONNECT` requests. A 200/201 response allows access. |
+| `MQTT2HTTP_PUBLISH_URL`                 | `http://example.com/{topic}` | Template URL for forwarding `PUBLISH` messages. `{topic}` is replaced dynamically.             |
+| `MQTT2HTTP_CONTENT_TYPE`                | `application/octet-stream`   | `Content-Type` header used in forwarded HTTP `POST` requests. E.g., `application/json`.        |
+| `MQTT2HTTP_TOPIC_HEADER`                | `X-Topic`                    | Name of the HTTP header that carries the MQTT topic.                                           |
+| `MQTT2HTTP_METRICS_HTTP_LISTEN_ADDRESS` | `:9090`                      | Address for serving Prometheus metrics at the `/metrics` endpoint.                             |
 
-- `MQTT2HTTP_PUBLISH_URL`
-  
-  Default: http://example.com/{topic}
-  
-  The URL template used when forwarding published messages. The {topic} placeholder is replaced with the actual MQTT topic name (optional).
+## Metrics
 
-- `MQTT2HTTP_CONTENT_TYPE`
-  
-  Default: application/octet-stream
-  
-  The Content-Type header used in the HTTP POST when forwarding the raw payload of a PUBLISH packet.
-  Example: if the message is a JSON string, set this to application/json.
+Prometheus metrics are available at `/metrics` on the configured metrics address (`MQTT2HTTP_METRICS_HTTP_LISTEN_ADDRESS`).
 
-- `MQTT2HTTP_TOPIC_HEADER`
-  
-  Default: X-Topic
-  
-  The name of the custom HTTP header in which the MQTT topic name will be sent during a PUBLISH POST.
-
-- `MQTT2HTTP_METRICS_HTTP_LISTEN_ADDRESS`
-  
-  Default: :9090
-  
-  The HTTP address (host:port) on which the Prometheus metrics endpoint (/metrics) will be exposed.
-
-## Minimum Required Configuration
-
-To use mqtt2http in a meaningful way, at least the following environment variables must be set:
-
-    MQTT2HTTP_AUTHORIZE_URL=http://...
-    MQTT2HTTP_PUBLISH_URL=http://...
+| Metric                         | Type    | Labels          | Description                                                                                         |
+| ------------------------------ | ------- | --------------- | --------------------------------------------------------------------------------------------------- |
+| `mqtt2http_publish_count`      | Counter | `topic`, `code` | Counts forwarded MQTT `PUBLISH` messages as HTTP `POST` requests, labeled by topic and HTTP status. |
+| `mqtt2http_authenticate_count` | Counter | `code`          | Counts HTTP authentication attempts during MQTT `CONNECT`, labeled by HTTP status code.             |
