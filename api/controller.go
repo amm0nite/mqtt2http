@@ -10,12 +10,13 @@ import (
 )
 
 type Controller struct {
-	server *mqtt.Server
-	client *lib.Client
+	server   *mqtt.Server
+	client   *lib.Client
+	password string
 }
 
-func CreateController(server *mqtt.Server, client *lib.Client) *Controller {
-	controller := &Controller{server: server, client: client}
+func CreateController(server *mqtt.Server, client *lib.Client, password string) *Controller {
+	controller := &Controller{server: server, client: client, password: password}
 	return controller
 }
 
@@ -29,7 +30,7 @@ func (c *Controller) RootHandler() http.HandlerFunc {
 
 func (c *Controller) PublishHandler() http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
-		username, password, ok := request.BasicAuth()
+		_, password, ok := request.BasicAuth()
 
 		if !ok {
 			writer.WriteHeader(http.StatusBadRequest)
@@ -37,13 +38,7 @@ func (c *Controller) PublishHandler() http.HandlerFunc {
 			return
 		}
 
-		authorized, err := c.client.Authorize(username, password)
-		if err != nil {
-			writer.WriteHeader(http.StatusInternalServerError)
-			io.WriteString(writer, err.Error())
-			return
-		}
-		if !authorized {
+		if password != c.password {
 			writer.WriteHeader(http.StatusForbidden)
 			io.WriteString(writer, "Forbidden")
 			return

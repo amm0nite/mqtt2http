@@ -11,6 +11,7 @@ import (
 type AuthHook struct {
 	mqtt.HookBase
 	Client *lib.Client
+	URL    string
 }
 
 func (h *AuthHook) ID() string {
@@ -32,7 +33,7 @@ func (h *AuthHook) Init(config any) error {
 func (h *AuthHook) OnConnectAuthenticate(cl *mqtt.Client, pk packets.Packet) bool {
 	username := string(cl.Properties.Username)
 	password := string(pk.Connect.Password)
-	res, err := h.Client.Authorize(username, password)
+	res, err := h.Client.Authorize(h.URL, username, password)
 	if err != nil {
 		h.Log.Error("Auth request failed", "err", err)
 		return false

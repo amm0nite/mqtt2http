@@ -10,6 +10,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/google/uuid"
 	"github.com/joho/godotenv"
 	mqtt "github.com/mochi-mqtt/server/v2"
 	"github.com/mochi-mqtt/server/v2/listeners"
@@ -24,6 +25,9 @@ func main() {
 	// Create the new MQTT Server.
 	options := &mqtt.Options{
 		InlineClient: true,
+		Capabilities: &mqtt.Capabilities{
+			MaximumSessionExpiryInterval: 3600,
+		},
 	}
 	server := mqtt.New(options)
 
@@ -66,25 +70,25 @@ func start(server *mqtt.Server) error {
 	contentType := getEnv("MQTT2HTTP_CONTENT_TYPE", "application/octet-stream")
 	topicHeader := getEnv("MQTT2HTTP_TOPIC_HEADER", "X-Topic")
 	metricsHttpAddr := getEnv("MQTT2HTTP_METRICS_HTTP_LISTEN_ADDRESS", ":9090")
+	routesFilePath := getEnv("MQTT2HTTP_ROUTES_FILE_PATH", "routes.yaml")
+	apiPassword := getEnv("MQTT2HTTP_API_PASSWORD", uuid.NewString())
 
 	client := &lib.Client{
-		Server:       server,
-		AuthorizeURL: authorizeURL,
-		PublishURL:   publishURL,
-		ContentType:  contentType,
-		TopicHeader:  topicHeader,
-		Metrics:      metrics,
+		Server:      server,
+		ContentType: contentType,
+		TopicHeader: topicHeader,
+		Metrics:     metrics,
 	}
 
 	// Setup auth hook
-	authHook := &hooks.AuthHook{Client: client}
+	authHook := &hooks.AuthHook{Client: client, URL: authorizeURL}
 	err = server.AddHook(authHook, nil)
 	if err != nil {
 		return fmt.Errorf("failed to add auth hook: %w", err)
 	}
 
 	// Setup publish hook
-	publishHook := &hooks.PublishHook{Client: client}
+	publishHook := &hooks.PublishHook{Client: client, DefaultURL: publishURL, RoutesFilePath: routesFilePath}
 	err = server.AddHook(publishHook, map[string]any{})
 	if err != nil {
 		return fmt.Errorf("failed to add publish hook: %w", err)
@@ -108,7 +112,7 @@ func start(server *mqtt.Server) error {
 	go func() {
 		server.Log.Info("Starting API HTTP server", "addr", httpAddr)
 
-		controller := api.CreateController(server, client)
+		controller := api.CreateController(server, client, apiPassword)
 
 		mux := http.NewServeMux()
 		mux.HandleFunc("/", controller.RootHandler())

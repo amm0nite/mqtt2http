@@ -13,20 +13,18 @@ import (
 )
 
 type Client struct {
-	Server       *mqtt.Server
-	AuthorizeURL string
-	PublishURL   string
-	ContentType  string
-	TopicHeader  string
-	Metrics      *Metrics
+	Server      *mqtt.Server
+	ContentType string
+	TopicHeader string
+	Metrics     *Metrics
 }
 
 var ClientTimeout = time.Duration(5) * time.Second
 
-func (c *Client) Authorize(username string, password string) (bool, error) {
+func (c *Client) Authorize(url string, username string, password string) (bool, error) {
 	client := &http.Client{Timeout: ClientTimeout}
 
-	req, err := http.NewRequest("POST", c.AuthorizeURL, nil)
+	req, err := http.NewRequest("POST", url, nil)
 	if err != nil {
 		return false, err
 	}
@@ -48,8 +46,8 @@ func (c *Client) Authorize(username string, password string) (bool, error) {
 	return true, nil
 }
 
-func (c *Client) Publish(topic string, payload []byte) error {
-	publishURL := strings.Replace(c.PublishURL, "{topic}", topic, 1)
+func (c *Client) Publish(url string, topic string, payload []byte) error {
+	publishURL := strings.Replace(url, "{topic}", topic, 1)
 	reader := bytes.NewReader(payload)
 
 	client := &http.Client{Timeout: ClientTimeout}

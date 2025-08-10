@@ -3,6 +3,8 @@ module mqtt2http
 go 1.24.3
 
 require (
+	github.com/goccy/go-yaml v1.18.0
+	github.com/google/uuid v1.6.0
 	github.com/joho/godotenv v1.5.1
 	github.com/mochi-mqtt/server/v2 v2.7.9
 	github.com/prometheus/client_golang v1.22.0
