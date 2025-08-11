@@ -17,7 +17,7 @@ func NewMetrics() (*Metrics, error) {
 			Subsystem: "publish",
 			Name:      "count",
 		},
-		[]string{"topic", "code"},
+		[]string{"topic", "url", "code"},
 	)
 	err = prometheus.Register(metrics.publishCounter)
 	if err != nil {
@@ -30,7 +30,7 @@ func NewMetrics() (*Metrics, error) {
 			Subsystem: "authenticate",
 			Name:      "count",
 		},
-		[]string{"code"},
+		[]string{"url", "code"},
 	)
 	err = prometheus.Register(metrics.authenticateCounter)
 	if err != nil {

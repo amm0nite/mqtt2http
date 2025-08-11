@@ -36,7 +36,11 @@ func (c *Client) Authorize(url string, username string, password string) (bool, 
 		return false, err
 	}
 
-	c.Metrics.authenticateCounter.With(prometheus.Labels{"code": strconv.Itoa(res.StatusCode)}).Inc()
+	labels := prometheus.Labels{
+		"url":  url,
+		"code": strconv.Itoa(res.StatusCode),
+	}
+	c.Metrics.authenticateCounter.With(labels).Inc()
 
 	success := res.StatusCode == 200 || res.StatusCode == 201
 	if !success {
@@ -66,8 +70,9 @@ func (c *Client) Publish(url string, topic string, payload []byte) error {
 	}
 
 	labels := prometheus.Labels{
-		"code":  strconv.Itoa(res.StatusCode),
+		"url":   url,
 		"topic": topic,
+		"code":  strconv.Itoa(res.StatusCode),
 	}
 	c.Metrics.publishCounter.With(labels).Inc()
 
