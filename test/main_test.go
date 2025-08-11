@@ -18,7 +18,7 @@ func TestMain(t *testing.T) {
 		defer r.Body.Close()
 		data, err := io.ReadAll(r.Body)
 		if err != nil {
-			t.Fatal(err)
+			t.Fatalf("body read failed: %v", err)
 		}
 		received <- data
 	})
@@ -37,7 +37,7 @@ func TestMain(t *testing.T) {
 
 	err := broker.Start()
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("broker start failed: %v", err)
 	}
 
 	waitForMQTT(t, addr)
