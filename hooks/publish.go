@@ -34,7 +34,11 @@ func (h *PublishHook) Init(config any) error {
 
 	err := h.loadRoutes()
 	if err != nil {
-		h.Log.Info("No routes loaded, defaulting to publish URL", "err", err)
+		h.Log.Info("No routes loaded", "err", err)
+	}
+
+	if len(h.routes) == 0 {
+		h.Log.Info("Adding default route", "url", h.DefaultURL)
 		h.routes = []lib.Route{
 			{
 				Name:    "default",
