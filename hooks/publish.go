@@ -30,14 +30,14 @@ func (h *PublishHook) Provides(b byte) bool {
 }
 
 func (h *PublishHook) Init(config any) error {
-	h.Log.Info("Initialized")
+	h.Log.Debug("Initialized")
 
 	err := h.loadRoutes()
 	if err != nil {
 		h.Log.Info("No routes loaded", "err", err)
 	}
 
-	if len(h.routes) == 0 {
+	if len(h.routes) == 0 && h.DefaultURL != "" {
 		h.Log.Info("Adding default route", "url", h.DefaultURL)
 		h.routes = []lib.Route{
 			{
@@ -76,12 +76,14 @@ func (h *PublishHook) loadRoutes() error {
 func (h *PublishHook) OnPublish(cl *mqtt.Client, pk packets.Packet) (packets.Packet, error) {
 	h.Log.Info("Received from client", "client", cl.ID, "topic", pk.TopicName, "payload", string(pk.Payload))
 
+	matched := false
 	for _, route := range h.routes {
 		ok, err := route.Match(pk.TopicName)
 		if err != nil {
 			h.Log.Error("Error while matching route pattern with topic", "err", err, "name", route.Name)
 		}
 		if ok {
+			matched = true
 			h.Log.Debug("Matched route", "topic", pk.TopicName, "name", route.Name)
 			err := h.Client.Publish(route.URL, pk.TopicName, pk.Payload)
 			if err != nil {
@@ -89,6 +91,10 @@ func (h *PublishHook) OnPublish(cl *mqtt.Client, pk packets.Packet) (packets.Pac
 			}
 			break
 		}
+	}
+
+	if !matched {
+		h.Log.Info("No route match", "topic", pk.TopicName)
 	}
 
 	return pk, nil

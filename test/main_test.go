@@ -1,6 +1,7 @@
 package test
 
 import (
+	"context"
 	"io"
 	"mqtt2http/broker"
 	"net"
@@ -9,63 +10,113 @@ import (
 	"testing"
 	"time"
 
-	paho "github.com/eclipse/paho.mqtt.golang"
+	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
 
-func TestMain(t *testing.T) {
+func TestPublishIsForwardedToHTTP(t *testing.T) {
 	received := make(chan []byte, 1)
-	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		defer r.Body.Close()
-		data, err := io.ReadAll(r.Body)
-		if err != nil {
-			t.Fatalf("body read failed: %v", err)
+
+	clientUsername := "testClient"
+	clientPassword := "testPassword"
+
+	// Authorize endpoint: assert Basic Auth
+	authSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			t.Fatalf("authorize: expected POST, got %s", r.Method)
 		}
-		received <- data
-	})
-	testHTTPServer := httptest.NewServer(handler)
-	defer testHTTPServer.Close()
+		username, password, ok := r.BasicAuth()
+		if !ok {
+			t.Fatal("authorize: missing basic auth")
+		}
+		if username != clientUsername {
+			t.Fatalf("authorize: wrong username (%q)", username)
+		}
+		if password != clientPassword {
+			t.Fatalf("authorize: wrong password")
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer authSrv.Close()
 
-	addr := freePortAddr(t)
-	config := &broker.BrokerConfig{
-		TCPAddr:         addr,
-		PublishURL:      testHTTPServer.URL,
-		HTTPAddr:        freePortAddr(t),
-		MetricsHTTPAddr: freePortAddr(t),
+	// Publish endpoint: capture body + basic request sanity
+	pubSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			t.Fatalf("publish: expected POST, got %s", r.Method)
+		}
+		ct := r.Header.Get("Content-Type")
+		if ct == "" {
+			t.Fatalf("publish: missing Content-Type header")
+		}
+		defer r.Body.Close()
+		b, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Fatalf("publish: read body failed: %v", err)
+		}
+		received <- b
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer pubSrv.Close()
+
+	// Choose free ports to avoid collisions.
+	mqttAddr := freePortAddr(t) // "127.0.0.1:PORT"
+	apiAddr := freePortAddr(t)
+	metricsAddr := freePortAddr(t)
+
+	cfg := &broker.BrokerConfig{
+		TCPAddr:         mqttAddr,
+		AuthorizeURL:    authSrv.URL,
+		PublishURL:      pubSrv.URL,
+		ContentType:     "application/json",
+		HTTPAddr:        apiAddr,
+		MetricsHTTPAddr: metricsAddr,
 	}
-	broker := broker.NewBroker(config)
-	defer broker.Close()
+	b := broker.NewBroker(cfg)
+	t.Cleanup(func() { b.Close() })
 
-	err := broker.Start()
-	if err != nil {
+	if err := b.Start(); err != nil {
 		t.Fatalf("broker start failed: %v", err)
 	}
 
-	waitForMQTT(t, addr)
+	// Optionally: wait until the MQTT port accepts TCP (reduces startup races).
+	waitForTCP(t, mqttAddr, 5*time.Second)
 
-	opts := paho.NewClientOptions().AddBroker("tcp://" + addr).SetClientID("test")
-	client := paho.NewClient(opts)
+	// Connect MQTT client with retry.
+	opts := mqtt.NewClientOptions().
+		AddBroker("tcp://" + mqttAddr).
+		SetClientID("it-test").
+		SetUsername(clientUsername).
+		SetPassword(clientPassword).
+		SetConnectRetry(true).
+		SetConnectRetryInterval(200 * time.Millisecond).
+		SetConnectTimeout(1 * time.Second)
 
-	token := client.Connect()
-	if !token.WaitTimeout(5*time.Second) || token.Error() != nil {
-		t.Fatalf("connect failed: %v", token.Error())
+	client := mqtt.NewClient(opts)
+	t.Cleanup(func() { client.Disconnect(250) })
+
+	if tok := client.Connect(); !tok.WaitTimeout(5*time.Second) || tok.Error() != nil {
+		t.Fatalf("connect failed: %v", tok.Error())
+	}
+	if !client.IsConnected() {
+		t.Fatalf("client reports not connected")
 	}
 
+	// Publish and assert HTTP saw the payload.
 	payload := []byte(`{"hello":"world"}`)
-	token = client.Publish("devices/42/state", 0, false, payload)
-	if !token.WaitTimeout(5*time.Second) || token.Error() != nil {
-		t.Fatalf("publish failed: %v", token.Error())
+	if tok := client.Publish("devices/42/state", 0, false, payload); !tok.WaitTimeout(5*time.Second) || tok.Error() != nil {
+		t.Fatalf("publish failed: %v", tok.Error())
 	}
 
 	select {
-	case data := <-received:
-		if string(data) != string(payload) {
-			t.Fatalf("unexpected body.\nwant: %s\ngot:  %s", payload, data)
+	case got := <-received:
+		if string(got) != string(payload) {
+			t.Fatalf("unexpected forwarded body\nwant: %s\ngot:  %s", payload, got)
 		}
 	case <-time.After(3 * time.Second):
 		t.Fatal("timed out waiting for forwarded request")
 	}
 }
 
+// freePortAddr returns "127.0.0.1:PORT" by binding to :0 and closing.
 func freePortAddr(t *testing.T) string {
 	t.Helper()
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
@@ -77,17 +128,20 @@ func freePortAddr(t *testing.T) string {
 	return addr
 }
 
-func waitForMQTT(t *testing.T, addr string) {
+// waitForTCP polls until a TCP connection to addr succeeds or the deadline passes.
+func waitForTCP(t *testing.T, addr string, timeout time.Duration) {
 	t.Helper()
-	deadline := time.Now().Add(5 * time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
 	for {
-		if time.Now().After(deadline) {
-			t.Fatal("broker did not become ready in time")
-		}
-		conn, err := net.DialTimeout("tcp", addr, 200*time.Millisecond)
+		d := net.Dialer{Timeout: 150 * time.Millisecond}
+		conn, err := d.DialContext(ctx, "tcp", addr)
 		if err == nil {
 			_ = conn.Close()
 			return
+		}
+		if ctx.Err() != nil {
+			t.Fatalf("broker did not accept TCP on %s in %v", addr, timeout)
 		}
 		time.Sleep(50 * time.Millisecond)
 	}

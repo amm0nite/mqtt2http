@@ -8,9 +8,15 @@ import (
 	"syscall"
 
 	"github.com/google/uuid"
+	"github.com/joho/godotenv"
 )
 
 func main() {
+	err := godotenv.Load()
+	if err != nil {
+		slog.Info("Did not load .env file", "err", err)
+	}
+
 	done := make(chan bool, 1)
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
@@ -28,7 +34,7 @@ func main() {
 	}
 
 	broker := broker.NewBroker(config)
-	err := broker.Start()
+	err = broker.Start()
 	if err != nil {
 		slog.Error("Failed to start", "err", err)
 		panic(err)

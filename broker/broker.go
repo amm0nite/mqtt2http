@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/joho/godotenv"
 	mqtt "github.com/mochi-mqtt/server/v2"
 	"github.com/mochi-mqtt/server/v2/listeners"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -37,9 +36,6 @@ func NewBroker(config *BrokerConfig) *Broker {
 	// Create the new MQTT Server.
 	options := &mqtt.Options{
 		InlineClient: true,
-		Capabilities: &mqtt.Capabilities{
-			MaximumSessionExpiryInterval: 3600,
-		},
 	}
 	broker.server = mqtt.New(options)
 
@@ -49,19 +45,21 @@ func NewBroker(config *BrokerConfig) *Broker {
 func (b *Broker) Start() error {
 	var err error
 
-	// Create HTTP Client
-	err = godotenv.Load()
-	if err != nil {
-		b.server.Log.Warn("Failed to read .env file", "err", err)
-	}
-
 	metrics := lib.NewMetrics()
 
+	// Create HTTP Client
 	client := &lib.Client{
 		Server:      b.server,
 		ContentType: b.config.ContentType,
 		TopicHeader: b.config.TopicHeader,
 		Metrics:     metrics,
+	}
+
+	// Setup lifecycle hook
+	lifecycleHook := &hooks.LifecycleHook{}
+	err = b.server.AddHook(lifecycleHook, nil)
+	if err != nil {
+		return fmt.Errorf("failed to add lifecycle hook: %w", err)
 	}
 
 	// Setup auth hook
@@ -73,7 +71,7 @@ func (b *Broker) Start() error {
 
 	// Setup publish hook
 	publishHook := &hooks.PublishHook{Client: client, DefaultURL: b.config.PublishURL, RoutesFilePath: b.config.RoutesFilePath}
-	err = b.server.AddHook(publishHook, map[string]any{})
+	err = b.server.AddHook(publishHook, nil)
 	if err != nil {
 		return fmt.Errorf("failed to add publish hook: %w", err)
 	}
@@ -87,6 +85,7 @@ func (b *Broker) Start() error {
 	}
 
 	// Start
+	b.server.Log.Info("Starting MQTT server", "addr", b.config.TCPAddr)
 	err = b.server.Serve()
 	if err != nil {
 		return fmt.Errorf("failed to start server: %w", err)

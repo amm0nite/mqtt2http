@@ -26,13 +26,15 @@ func (h *AuthHook) Provides(b byte) bool {
 }
 
 func (h *AuthHook) Init(config any) error {
-	h.Log.Info("Initialized")
+	h.Log.Debug("Initialized")
 	return nil
 }
 
 func (h *AuthHook) OnConnectAuthenticate(cl *mqtt.Client, pk packets.Packet) bool {
 	username := string(cl.Properties.Username)
 	password := string(pk.Connect.Password)
+
+	h.Log.Debug("Client tries to connect", "username", username)
 	res, err := h.Client.Authorize(h.URL, username, password)
 	if err != nil {
 		h.Log.Error("Auth request failed", "err", err)
@@ -42,5 +44,6 @@ func (h *AuthHook) OnConnectAuthenticate(cl *mqtt.Client, pk packets.Packet) boo
 }
 
 func (h *AuthHook) OnACLCheck(cl *mqtt.Client, topic string, write bool) bool {
+	h.Log.Debug("ACLCheck", "client", cl.ID, "topic", topic, "write", write)
 	return true
 }

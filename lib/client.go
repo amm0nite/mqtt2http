@@ -61,8 +61,12 @@ func (c *Client) Publish(url string, topic string, payload []byte) error {
 		return err
 	}
 
-	req.Header.Set("Content-Type", c.ContentType)
-	req.Header.Set(c.TopicHeader, topic)
+	if c.ContentType != "" {
+		req.Header.Set("Content-Type", c.ContentType)
+	}
+	if c.TopicHeader != "" {
+		req.Header.Set(c.TopicHeader, topic)
+	}
 
 	res, err := client.Do(req)
 	if err != nil {
