@@ -2,6 +2,7 @@ package test
 
 import (
 	"mqtt2http/broker"
+	"mqtt2http/lib"
 	"testing"
 	"time"
 
@@ -9,8 +10,9 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-func TestPublishIsForwardedToHTTP(t *testing.T) {
-	received := make(chan []byte, 1)
+func TestPublishIsForwardedToDifferentHTTPRoutes(t *testing.T) {
+	receivedA := make(chan []byte, 1)
+	receivedB := make(chan []byte, 1)
 
 	clientUsername := "testClient"
 	clientPassword := "testPassword"
@@ -18,8 +20,11 @@ func TestPublishIsForwardedToHTTP(t *testing.T) {
 	authSrv := createAuthSrv(t, clientUsername, clientPassword)
 	defer authSrv.Close()
 
-	pubSrv := createPubSrv(t, received)
-	defer pubSrv.Close()
+	routeASrv := createPubSrv(t, receivedA)
+	defer routeASrv.Close()
+
+	routeBSrv := createPubSrv(t, receivedB)
+	defer routeASrv.Close()
 
 	// Choose free ports to avoid collisions.
 	mqttAddr := freePortAddr(t) // "127.0.0.1:PORT"
@@ -29,12 +34,21 @@ func TestPublishIsForwardedToHTTP(t *testing.T) {
 	cfg := &broker.BrokerConfig{
 		TCPAddr:         mqttAddr,
 		AuthorizeURL:    authSrv.URL,
-		PublishURL:      pubSrv.URL,
 		ContentType:     "application/json",
 		HTTPAddr:        apiAddr,
 		MetricsHTTPAddr: metricsAddr,
 	}
-	cfg.Load()
+	routeA := lib.Route{
+		Name:    "RouteA",
+		Pattern: "topicA",
+		URL:     routeASrv.URL,
+	}
+	routeB := lib.Route{
+		Name:    "RouteB",
+		Pattern: "topicB",
+		URL:     routeBSrv.URL,
+	}
+	cfg.Routes = append(cfg.Routes, routeA, routeB)
 
 	b := broker.NewBroker(cfg)
 	t.Cleanup(func() { b.Close() })
@@ -66,18 +80,34 @@ func TestPublishIsForwardedToHTTP(t *testing.T) {
 		t.Fatalf("client reports not connected")
 	}
 
-	// Publish and assert HTTP saw the payload.
-	payload := []byte(`{"hello":"world"}`)
-	if tok := client.Publish("devices/42/state", 0, false, payload); !tok.WaitTimeout(5*time.Second) || tok.Error() != nil {
+	topicA := "topicA"
+	topicB := "topicB"
+
+	payloadA := []byte(`payloadA`)
+	payloadB := []byte(`payloadB`)
+
+	if tok := client.Publish(topicA, 0, false, payloadA); !tok.WaitTimeout(5*time.Second) || tok.Error() != nil {
+		t.Fatalf("publish failed: %v", tok.Error())
+	}
+	if tok := client.Publish(topicB, 0, false, payloadB); !tok.WaitTimeout(5*time.Second) || tok.Error() != nil {
 		t.Fatalf("publish failed: %v", tok.Error())
 	}
 
 	select {
-	case got := <-received:
-		if string(got) != string(payload) {
-			t.Fatalf("unexpected forwarded body\nwant: %s\ngot:  %s", payload, got)
+	case got := <-receivedA:
+		if string(got) != string(payloadA) {
+			t.Fatalf("unexpected forwarded body\nwant: %s\ngot:  %s", payloadA, got)
 		}
 	case <-time.After(3 * time.Second):
-		t.Fatal("timed out waiting for forwarded request")
+		t.Fatal("timed out waiting for forwarded request A")
+	}
+
+	select {
+	case got := <-receivedB:
+		if string(got) != string(payloadB) {
+			t.Fatalf("unexpected forwarded body\nwant: %s\ngot:  %s", payloadB, got)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("timed out waiting for forwarded request B")
 	}
 }

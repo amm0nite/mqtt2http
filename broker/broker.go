@@ -10,20 +10,9 @@ import (
 
 	mqtt "github.com/mochi-mqtt/server/v2"
 	"github.com/mochi-mqtt/server/v2/listeners"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
-
-type BrokerConfig struct {
-	TCPAddr         string
-	HTTPAddr        string
-	AuthorizeURL    string
-	PublishURL      string
-	ContentType     string
-	TopicHeader     string
-	MetricsHTTPAddr string
-	RoutesFilePath  string
-	APIPassword     string
-}
 
 type Broker struct {
 	config *BrokerConfig
@@ -42,10 +31,10 @@ func NewBroker(config *BrokerConfig) *Broker {
 	return broker
 }
 
-func (b *Broker) Start() error {
+func (b *Broker) Start(reg prometheus.Registerer) error {
 	var err error
 
-	metrics := lib.NewMetrics()
+	metrics := lib.NewMetrics(reg)
 
 	// Create HTTP Client
 	client := &lib.Client{
@@ -70,7 +59,7 @@ func (b *Broker) Start() error {
 	}
 
 	// Setup publish hook
-	publishHook := &hooks.PublishHook{Client: client, DefaultURL: b.config.PublishURL, RoutesFilePath: b.config.RoutesFilePath}
+	publishHook := &hooks.PublishHook{Client: client, Routes: b.config.Routes}
 	err = b.server.AddHook(publishHook, nil)
 	if err != nil {
 		return fmt.Errorf("failed to add publish hook: %w", err)

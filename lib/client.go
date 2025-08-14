@@ -80,7 +80,7 @@ func (c *Client) Publish(url string, topic string, payload []byte) error {
 	}
 	c.Metrics.publishCounter.With(labels).Inc()
 
-	if res.StatusCode != 200 && res.StatusCode != 201 {
+	if res.StatusCode < 200 || res.StatusCode > 299 {
 		return fmt.Errorf("publish post failed with status %d", res.StatusCode)
 	}
 

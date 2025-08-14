@@ -2,21 +2,17 @@ package hooks
 
 import (
 	"bytes"
-	"io"
 	"mqtt2http/lib"
-	"os"
 
-	"github.com/goccy/go-yaml"
 	mqtt "github.com/mochi-mqtt/server/v2"
 	"github.com/mochi-mqtt/server/v2/packets"
 )
 
 type PublishHook struct {
 	mqtt.HookBase
-	Client         *lib.Client
-	DefaultURL     string
-	RoutesFilePath string
-	routes         []lib.Route
+	Client     *lib.Client
+	DefaultURL string
+	Routes     []lib.Route
 }
 
 func (h *PublishHook) ID() string {
@@ -31,45 +27,6 @@ func (h *PublishHook) Provides(b byte) bool {
 
 func (h *PublishHook) Init(config any) error {
 	h.Log.Debug("Initialized")
-
-	err := h.loadRoutes()
-	if err != nil {
-		h.Log.Info("No routes loaded", "err", err)
-	}
-
-	if len(h.routes) == 0 && h.DefaultURL != "" {
-		h.Log.Info("Adding default route", "url", h.DefaultURL)
-		h.routes = []lib.Route{
-			{
-				Name:    "default",
-				Pattern: ".*",
-				URL:     h.DefaultURL,
-			},
-		}
-	}
-
-	return nil
-}
-
-func (h *PublishHook) loadRoutes() error {
-	routesFile, err := os.Open(h.RoutesFilePath)
-	if err != nil {
-		h.Log.Info("Failed to open routes file", "err", err)
-		return err
-	}
-
-	routesData, err := io.ReadAll(routesFile)
-	if err != nil {
-		h.Log.Error("Failed to read routes file", "err", err)
-		return err
-	}
-
-	err = yaml.Unmarshal(routesData, h.routes)
-	if err != nil {
-		h.Log.Error("Failed to parse routes", "err", err)
-		return err
-	}
-
 	return nil
 }
 
@@ -77,7 +34,7 @@ func (h *PublishHook) OnPublish(cl *mqtt.Client, pk packets.Packet) (packets.Pac
 	h.Log.Info("Received from client", "client", cl.ID, "topic", pk.TopicName, "payload", string(pk.Payload))
 
 	matched := false
-	for _, route := range h.routes {
+	for _, route := range h.Routes {
 		ok, err := route.Match(pk.TopicName)
 		if err != nil {
 			h.Log.Error("Error while matching route pattern with topic", "err", err, "name", route.Name)

@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/joho/godotenv"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 func main() {
@@ -32,9 +33,10 @@ func main() {
 		RoutesFilePath:  getEnv("MQTT2HTTP_ROUTES_FILE_PATH", "routes.yaml"),
 		APIPassword:     getEnv("MQTT2HTTP_API_PASSWORD", uuid.NewString()),
 	}
+	config.Load()
 
 	broker := broker.NewBroker(config)
-	err = broker.Start()
+	err = broker.Start(prometheus.DefaultRegisterer)
 	if err != nil {
 		slog.Error("Failed to start", "err", err)
 		panic(err)

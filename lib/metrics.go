@@ -10,10 +10,10 @@ type Metrics struct {
 	authenticateCounter *prometheus.CounterVec
 }
 
-func NewMetrics() *Metrics {
+func NewMetrics(reg prometheus.Registerer) *Metrics {
 	metrics := &Metrics{}
 
-	metrics.publishCounter = promauto.NewCounterVec(
+	metrics.publishCounter = promauto.With(reg).NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: "mqtt2http",
 			Subsystem: "publish",
@@ -22,7 +22,7 @@ func NewMetrics() *Metrics {
 		[]string{"topic", "url", "code"},
 	)
 
-	metrics.authenticateCounter = promauto.NewCounterVec(
+	metrics.authenticateCounter = promauto.With(reg).NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: "mqtt2http",
 			Subsystem: "authenticate",
