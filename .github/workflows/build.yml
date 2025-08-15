@@ -4,7 +4,6 @@ on:
   push:
     branches: [ main ]
     tags: [ '*' ]
-  # optional: run tests on PRs too
   pull_request:
 
 concurrency:
@@ -31,12 +30,6 @@ jobs:
       - name: Test
         run: |
           go test ./... -race
-
-      - name: Upload coverage
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage
-          path: coverage.out
 
   build-latest:
     name: Build & push :latest (main)
