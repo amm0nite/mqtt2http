@@ -53,7 +53,7 @@ func (c *BrokerConfig) loadRoutes() error {
 		return err
 	}
 
-	err = yaml.Unmarshal(routesData, c.Routes)
+	err = yaml.Unmarshal(routesData, &c.Routes)
 	if err != nil {
 		slog.Error("Failed to parse routes", "err", err)
 		return err

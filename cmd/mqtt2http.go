@@ -25,8 +25,8 @@ func main() {
 	config := &broker.BrokerConfig{
 		TCPAddr:         getEnv("MQTT2HTTP_MQTT_LISTEN_ADDRESS", ":1883"),
 		HTTPAddr:        getEnv("MQTT2HTTP_HTTP_LISTEN_ADDRESS", ":8080"),
-		AuthorizeURL:    getEnv("MQTT2HTTP_AUTHORIZE_URL", "http://example.com"),
-		PublishURL:      getEnv("MQTT2HTTP_PUBLISH_URL", "http://example.com/{topic}"),
+		AuthorizeURL:    getEnv("MQTT2HTTP_AUTHORIZE_URL", "http://127.0.0.1/authorize"),
+		PublishURL:      getEnv("MQTT2HTTP_PUBLISH_URL", "http://127.0.0.1/publish/{topic}"),
 		ContentType:     getEnv("MQTT2HTTP_CONTENT_TYPE", "application/octet-stream"),
 		TopicHeader:     getEnv("MQTT2HTTP_TOPIC_HEADER", "X-Topic"),
 		MetricsHTTPAddr: getEnv("MQTT2HTTP_METRICS_HTTP_LISTEN_ADDRESS", ":9090"),
