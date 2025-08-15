@@ -30,18 +30,20 @@ func (c *Controller) RootHandler() http.HandlerFunc {
 
 func (c *Controller) PublishHandler() http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
-		_, password, ok := request.BasicAuth()
+		if c.password != "" {
+			_, password, ok := request.BasicAuth()
 
-		if !ok {
-			writer.WriteHeader(http.StatusBadRequest)
-			io.WriteString(writer, "Missing basic auth")
-			return
-		}
+			if !ok {
+				writer.WriteHeader(http.StatusBadRequest)
+				io.WriteString(writer, "Missing basic auth")
+				return
+			}
 
-		if password != c.password {
-			writer.WriteHeader(http.StatusForbidden)
-			io.WriteString(writer, "Forbidden")
-			return
+			if password != c.password {
+				writer.WriteHeader(http.StatusForbidden)
+				io.WriteString(writer, "Forbidden")
+				return
+			}
 		}
 
 		topic := request.URL.Query().Get("topic")
