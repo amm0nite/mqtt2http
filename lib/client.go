@@ -13,20 +13,18 @@ import (
 )
 
 type Client struct {
-	Server       *mqtt.Server
-	AuthorizeURL string
-	PublishURL   string
-	ContentType  string
-	TopicHeader  string
-	Metrics      *Metrics
+	Server      *mqtt.Server
+	ContentType string
+	TopicHeader string
+	Metrics     *Metrics
 }
 
 var ClientTimeout = time.Duration(5) * time.Second
 
-func (c *Client) Authorize(username string, password string) (bool, error) {
+func (c *Client) Authorize(url string, username string, password string) (bool, error) {
 	client := &http.Client{Timeout: ClientTimeout}
 
-	req, err := http.NewRequest("POST", c.AuthorizeURL, nil)
+	req, err := http.NewRequest("POST", url, nil)
 	if err != nil {
 		return false, err
 	}
@@ -38,7 +36,11 @@ func (c *Client) Authorize(username string, password string) (bool, error) {
 		return false, err
 	}
 
-	c.Metrics.authenticateCounter.With(prometheus.Labels{"code": strconv.Itoa(res.StatusCode)}).Inc()
+	labels := prometheus.Labels{
+		"url":  url,
+		"code": strconv.Itoa(res.StatusCode),
+	}
+	c.Metrics.authenticateCounter.With(labels).Inc()
 
 	success := res.StatusCode == 200 || res.StatusCode == 201
 	if !success {
@@ -48,8 +50,8 @@ func (c *Client) Authorize(username string, password string) (bool, error) {
 	return true, nil
 }
 
-func (c *Client) Publish(topic string, payload []byte) error {
-	publishURL := strings.Replace(c.PublishURL, "{topic}", topic, 1)
+func (c *Client) Publish(url string, topic string, payload []byte) error {
+	publishURL := strings.Replace(url, "{topic}", topic, 1)
 	reader := bytes.NewReader(payload)
 
 	client := &http.Client{Timeout: ClientTimeout}
@@ -59,8 +61,12 @@ func (c *Client) Publish(topic string, payload []byte) error {
 		return err
 	}
 
-	req.Header.Set("Content-Type", c.ContentType)
-	req.Header.Set(c.TopicHeader, topic)
+	if c.ContentType != "" {
+		req.Header.Set("Content-Type", c.ContentType)
+	}
+	if c.TopicHeader != "" {
+		req.Header.Set(c.TopicHeader, topic)
+	}
 
 	res, err := client.Do(req)
 	if err != nil {
@@ -68,12 +74,13 @@ func (c *Client) Publish(topic string, payload []byte) error {
 	}
 
 	labels := prometheus.Labels{
-		"code":  strconv.Itoa(res.StatusCode),
+		"url":   url,
 		"topic": topic,
+		"code":  strconv.Itoa(res.StatusCode),
 	}
 	c.Metrics.publishCounter.With(labels).Inc()
 
-	if res.StatusCode != 200 && res.StatusCode != 201 {
+	if res.StatusCode < 200 || res.StatusCode > 299 {
 		return fmt.Errorf("publish post failed with status %d", res.StatusCode)
 	}
 

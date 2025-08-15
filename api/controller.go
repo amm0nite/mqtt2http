@@ -10,12 +10,13 @@ import (
 )
 
 type Controller struct {
-	server *mqtt.Server
-	client *lib.Client
+	server   *mqtt.Server
+	client   *lib.Client
+	password string
 }
 
-func CreateController(server *mqtt.Server, client *lib.Client) *Controller {
-	controller := &Controller{server: server, client: client}
+func CreateController(server *mqtt.Server, client *lib.Client, password string) *Controller {
+	controller := &Controller{server: server, client: client, password: password}
 	return controller
 }
 
@@ -29,24 +30,20 @@ func (c *Controller) RootHandler() http.HandlerFunc {
 
 func (c *Controller) PublishHandler() http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
-		username, password, ok := request.BasicAuth()
+		if c.password != "" {
+			_, password, ok := request.BasicAuth()
 
-		if !ok {
-			writer.WriteHeader(http.StatusBadRequest)
-			io.WriteString(writer, "Missing basic auth")
-			return
-		}
+			if !ok {
+				writer.WriteHeader(http.StatusBadRequest)
+				io.WriteString(writer, "Missing basic auth")
+				return
+			}
 
-		authorized, err := c.client.Authorize(username, password)
-		if err != nil {
-			writer.WriteHeader(http.StatusInternalServerError)
-			io.WriteString(writer, err.Error())
-			return
-		}
-		if !authorized {
-			writer.WriteHeader(http.StatusForbidden)
-			io.WriteString(writer, "Forbidden")
-			return
+			if password != c.password {
+				writer.WriteHeader(http.StatusForbidden)
+				io.WriteString(writer, "Forbidden")
+				return
+			}
 		}
 
 		topic := request.URL.Query().Get("topic")

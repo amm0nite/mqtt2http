@@ -1,41 +1,35 @@
 package lib
 
-import "github.com/prometheus/client_golang/prometheus"
+import (
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+)
 
 type Metrics struct {
 	publishCounter      *prometheus.CounterVec
 	authenticateCounter *prometheus.CounterVec
 }
 
-func NewMetrics() (*Metrics, error) {
-	var err error
+func NewMetrics(reg prometheus.Registerer) *Metrics {
 	metrics := &Metrics{}
 
-	metrics.publishCounter = prometheus.NewCounterVec(
+	metrics.publishCounter = promauto.With(reg).NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: "mqtt2http",
 			Subsystem: "publish",
 			Name:      "count",
 		},
-		[]string{"topic", "code"},
+		[]string{"topic", "url", "code"},
 	)
-	err = prometheus.Register(metrics.publishCounter)
-	if err != nil {
-		return nil, err
-	}
 
-	metrics.authenticateCounter = prometheus.NewCounterVec(
+	metrics.authenticateCounter = promauto.With(reg).NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: "mqtt2http",
 			Subsystem: "authenticate",
 			Name:      "count",
 		},
-		[]string{"code"},
+		[]string{"url", "code"},
 	)
-	err = prometheus.Register(metrics.authenticateCounter)
-	if err != nil {
-		return nil, err
-	}
 
-	return metrics, nil
+	return metrics
 }

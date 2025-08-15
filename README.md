@@ -5,6 +5,7 @@ A simple MQTT broker that connects to your HTTP services for login and message h
 ## Table of Contents
 
 * [Features](#features)
+* [Missing Features](#missing-features)
 * [Quick Start](#quick-start)
 * [Docker](#docker)
 * [Configuration](#configuration)
@@ -16,6 +17,10 @@ A simple MQTT broker that connects to your HTTP services for login and message h
 * **MQTT to HTTP**: Forwards `PUBLISH` messages as HTTP `POST` requests
 * **HTTP to MQTT**: Accepts HTTP `POST` requests to publish MQTT messages
 * **Metrics**: Exposes Prometheus-compatible metrics
+
+## Missing features
+
+* **ACL**: Limits wich topic can be published or subscribed to. Everything is allowed for now.
 
 ## Quick Start
 
@@ -72,6 +77,8 @@ image: docker.io/amm0nite/mqtt2http:1.0.0
 | `MQTT2HTTP_CONTENT_TYPE`                | `application/octet-stream`   | `Content-Type` header used in forwarded HTTP `POST` requests. E.g., `application/json`.        |
 | `MQTT2HTTP_TOPIC_HEADER`                | `X-Topic`                    | Name of the HTTP header that carries the MQTT topic.                                           |
 | `MQTT2HTTP_METRICS_HTTP_LISTEN_ADDRESS` | `:9090`                      | Address for serving Prometheus metrics at the `/metrics` endpoint.                             |
+| `MQTT2HTTP_ROUTES_FILE_PATH` | `routes.yaml` | Path for the yaml file that defines all routes.
+| `MQTT2HTTP_API_PASSWORD` | random value | Password used to secure the API endpoints.
 
 ## Metrics
 
