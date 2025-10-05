@@ -1,6 +1,6 @@
 # MQTT2HTTP
 
-A simple MQTT broker that connects to your HTTP services for login and message handling.
+MQTT broker that forwards topics to HTTP endpoints with configurable routing.
 
 ## Table of Contents
 
