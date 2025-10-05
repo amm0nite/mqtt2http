@@ -9,6 +9,7 @@ A simple MQTT broker that connects to your HTTP services for login and message h
 * [Quick Start](#quick-start)
 * [Docker](#docker)
 * [Configuration](#configuration)
+* [Routing](#routing)
 * [Metrics](#metrics)
 
 ## Features
@@ -79,6 +80,32 @@ image: docker.io/amm0nite/mqtt2http:1.0.0
 | `MQTT2HTTP_METRICS_HTTP_LISTEN_ADDRESS` | `:9090`                      | Address for serving Prometheus metrics at the `/metrics` endpoint.                             |
 | `MQTT2HTTP_ROUTES_FILE_PATH` | `routes.yaml` | Path for the yaml file that defines all routes.
 | `MQTT2HTTP_API_PASSWORD` | random value | Password used to secure the API endpoints.
+
+## Routing
+
+Define fine-grained routing rules in a YAML file that is loaded at start-up. By default the broker looks for `routes.yaml` in the working directory, or you can set `MQTT2HTTP_ROUTES_FILE_PATH` to point to a different file.
+
+Each entry in the file is a map with three fields:
+
+* `name`: friendly identifier used in logs when the route matches.
+* `pattern`: Go regular expression tested against the MQTT topic (`^` / `$` anchors are optional).
+* `url`: target HTTP endpoint to receive the forwarded payload. Leave empty to drop messages for this route after a match.
+
+Example `routes.yaml`:
+
+```yaml
+- name: telemetry
+  pattern: '^sensors/.+'
+  url: https://example.com/iot/publish
+- name: drop-debug
+  pattern: '^debug/'
+  url: ''
+- name: fallback
+  pattern: '.*'
+  url: https://example.com/default/{topic}
+```
+
+Routes are evaluated in order and the first match wins. If no route matches, the broker logs the miss and no HTTP request is sent. When the routes file is empty (or missing) and `MQTT2HTTP_PUBLISH_URL` is configured, a default catch-all route using that URL is created automatically.
 
 ## Metrics
 
