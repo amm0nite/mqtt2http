@@ -75,7 +75,7 @@ image: docker.io/amm0nite/mqtt2http:1.0.0
 | `MQTT2HTTP_MQTT_LISTEN_ADDRESS`         | `:1883`                      | Address where the MQTT broker listens (host\:port).                                            |
 | `MQTT2HTTP_HTTP_LISTEN_ADDRESS`         | `:8080`                      | Address for the HTTP REST API (`/publish` endpoint).                                           |
 | `MQTT2HTTP_AUTHORIZE_URL`               | `http://example.com`         | HTTP Basic Auth endpoint for authorizing `CONNECT` requests. A 200/201 response allows access. |
-| `MQTT2HTTP_PUBLISH_URL`                 | `http://example.com/{topic}` | Template URL for forwarding `PUBLISH` messages. `{topic}` is replaced dynamically.             |
+| `MQTT2HTTP_PUBLISH_URL`                 | `http://example.com/{topic}` | Template URL for forwarding `PUBLISH` messages; `{topic}` is replaced dynamically. When no routes file is loaded, this URL is used for a catch-all default route. |
 | `MQTT2HTTP_CONTENT_TYPE`                | `application/octet-stream`   | `Content-Type` header used in forwarded HTTP `POST` requests. E.g., `application/json`.        |
 | `MQTT2HTTP_TOPIC_HEADER`                | `X-Topic`                    | Name of the HTTP header that carries the MQTT topic.                                           |
 | `MQTT2HTTP_METRICS_HTTP_LISTEN_ADDRESS` | `:9090`                      | Address for serving Prometheus metrics at the `/metrics` endpoint.                             |
