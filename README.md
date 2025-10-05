@@ -30,6 +30,7 @@ Set the URLs for your HTTP services using environment variables:
 ```env
 MQTT2HTTP_AUTHORIZE_URL=http://...
 MQTT2HTTP_PUBLISH_URL=http://...
+MQTT2HTTP_API_PASSWORD=somesecret
 ```
 
 ### MQTT to HTTP
@@ -39,10 +40,10 @@ MQTT2HTTP_PUBLISH_URL=http://...
 
 ### HTTP to MQTT
 
-* Publish messages to MQTT topics using the built-in REST API.
+* Publish messages to MQTT topics using the built-in REST API. Requests must include HTTP Basic Auth with the password set in `MQTT2HTTP_API_PASSWORD` (the username is ignored). The default password is random at start-up, so set it explicitly if you want to call the API.
 
 ```bash
-curl --user username:password -X POST -d '{"test": true}' http://mqtt2http:8080/publish?topic=hello
+curl --user user:somesecret -X POST -d '{"test": true}' http://mqtt2http:8080/publish?topic=hello
 ```
 
 ## Docker
