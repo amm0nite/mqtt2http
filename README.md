@@ -21,7 +21,7 @@ MQTT broker that forwards topics to HTTP endpoints with configurable routing.
 
 ## Missing features
 
-* **ACL**: Limits wich topic can be published or subscribed to. Everything is allowed for now.
+* **ACL**: Limits which topic can be published or subscribed to. Everything is allowed for now.
 
 ## Quick Start
 
