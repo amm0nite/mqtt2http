@@ -1,6 +1,7 @@
 package broker
 
 import (
+	"context"
 	"fmt"
 	"mqtt2http/api"
 	"mqtt2http/hooks"
@@ -33,16 +34,21 @@ func NewBroker(config *BrokerConfig) *Broker {
 
 func (b *Broker) Start(reg prometheus.Registerer) error {
 	var err error
+	ctx := context.Background()
 
 	metrics := lib.NewMetrics(reg)
 
 	// Create HTTP Client
-	client := &lib.Client{
-		Server:      b.server,
-		ContentType: b.config.ContentType,
-		TopicHeader: b.config.TopicHeader,
-		Metrics:     metrics,
-	}
+	httpClient := lib.NewHTTPClient(
+		b.config.ContentType,
+		b.config.TopicHeader,
+		b.config.AuthorizeURL,
+		metrics,
+	)
+
+	// Create the client hub
+	clientHub := lib.NewClientHub(metrics)
+	go clientHub.Run(ctx)
 
 	// Setup lifecycle hook
 	lifecycleHook := &hooks.LifecycleHook{}
@@ -51,15 +57,15 @@ func (b *Broker) Start(reg prometheus.Registerer) error {
 		return fmt.Errorf("failed to add lifecycle hook: %w", err)
 	}
 
-	// Setup auth hook
-	authHook := &hooks.AuthHook{Client: client, URL: b.config.AuthorizeURL}
+	// Setup connect-authenticate, acl, disconnect  hook
+	authHook := &hooks.SessionHook{HTTPClient: httpClient, Hub: clientHub}
 	err = b.server.AddHook(authHook, nil)
 	if err != nil {
 		return fmt.Errorf("failed to add auth hook: %w", err)
 	}
 
 	// Setup publish hook
-	publishHook := &hooks.PublishHook{Client: client, Routes: b.config.Routes}
+	publishHook := &hooks.PublishHook{HTTPClient: httpClient, Routes: b.config.Routes}
 	err = b.server.AddHook(publishHook, nil)
 	if err != nil {
 		return fmt.Errorf("failed to add publish hook: %w", err)
@@ -84,7 +90,7 @@ func (b *Broker) Start(reg prometheus.Registerer) error {
 	go func() {
 		b.server.Log.Info("Starting API HTTP server", "addr", b.config.HTTPAddr)
 
-		controller := api.CreateController(b.server, client, b.config.APIPassword)
+		controller := api.CreateController(b.server, b.config.APIPassword)
 
 		mux := http.NewServeMux()
 		mux.HandleFunc("/", controller.RootHandler())

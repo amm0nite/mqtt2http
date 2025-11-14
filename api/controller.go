@@ -3,7 +3,6 @@ package api
 import (
 	"encoding/json"
 	"io"
-	"mqtt2http/lib"
 	"net/http"
 
 	mqtt "github.com/mochi-mqtt/server/v2"
@@ -11,12 +10,11 @@ import (
 
 type Controller struct {
 	server   *mqtt.Server
-	client   *lib.Client
 	password string
 }
 
-func CreateController(server *mqtt.Server, client *lib.Client, password string) *Controller {
-	controller := &Controller{server: server, client: client, password: password}
+func CreateController(server *mqtt.Server, password string) *Controller {
+	controller := &Controller{server: server, password: password}
 	return controller
 }
 

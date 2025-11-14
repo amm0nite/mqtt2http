@@ -10,7 +10,7 @@ import (
 
 type PublishHook struct {
 	mqtt.HookBase
-	Client     *lib.Client
+	HTTPClient *lib.HTTPClient
 	DefaultURL string
 	Routes     []lib.Route
 }
@@ -45,7 +45,7 @@ func (h *PublishHook) OnPublish(cl *mqtt.Client, pk packets.Packet) (packets.Pac
 			if route.URL == "" {
 				break
 			}
-			err := h.Client.Publish(route.URL, pk.TopicName, pk.Payload)
+			err := h.HTTPClient.Publish(route.URL, pk.TopicName, pk.Payload)
 			if err != nil {
 				h.Log.Error("Failed to post on publish", "err", err, "URL", route.URL)
 			}

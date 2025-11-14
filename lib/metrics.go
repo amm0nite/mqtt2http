@@ -8,6 +8,7 @@ import (
 type Metrics struct {
 	publishCounter      *prometheus.CounterVec
 	authenticateCounter *prometheus.CounterVec
+	sessionGauge        prometheus.Gauge
 }
 
 func NewMetrics(reg prometheus.Registerer) *Metrics {
@@ -16,8 +17,7 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 	metrics.publishCounter = promauto.With(reg).NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: "mqtt2http",
-			Subsystem: "publish",
-			Name:      "count",
+			Name:      "publish_count",
 		},
 		[]string{"topic", "url", "code"},
 	)
@@ -25,10 +25,16 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 	metrics.authenticateCounter = promauto.With(reg).NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: "mqtt2http",
-			Subsystem: "authenticate",
-			Name:      "count",
+			Name:      "authenticate_count",
 		},
 		[]string{"url", "code"},
+	)
+
+	metrics.sessionGauge = promauto.With(reg).NewGauge(
+		prometheus.GaugeOpts{
+			Namespace: "mqtt2http",
+			Name:      "sessions",
+		},
 	)
 
 	return metrics
