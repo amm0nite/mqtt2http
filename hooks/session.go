@@ -11,8 +11,7 @@ import (
 type SessionHook struct {
 	mqtt.HookBase
 	HTTPClient *lib.HTTPClient
-	URL        string
-	Hub        *lib.ClientHub
+	Store      *lib.ClientStore
 }
 
 func (h *SessionHook) ID() string {
@@ -47,18 +46,18 @@ func (h *SessionHook) OnConnectAuthenticate(cl *mqtt.Client, pk packets.Packet) 
 		return false
 	}
 
-	client := &lib.Client{ID: cl.ID, Username: username}
-	h.Hub.AddChan <- client
+	h.Store.Enter(cl.ID, username)
 
 	return true
 }
 
 func (h *SessionHook) OnACLCheck(cl *mqtt.Client, topic string, write bool) bool {
 	h.Log.Debug("ACLCheck", "client", cl.ID, "topic", topic, "write", write)
+	h.Store.Subscribe(cl.ID, topic)
 	return true
 }
 
 func (h *SessionHook) OnDisconnect(cl *mqtt.Client, err error, expire bool) {
 	h.Log.Debug("Disconnect", "client", cl.ID, "expire", expire)
-	h.Hub.RemoveChan <- cl.ID
+	h.Store.Leave(cl.ID)
 }

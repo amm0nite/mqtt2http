@@ -11,8 +11,8 @@ import (
 type PublishHook struct {
 	mqtt.HookBase
 	HTTPClient *lib.HTTPClient
-	DefaultURL string
 	Routes     []lib.Route
+	Store      *lib.ClientStore
 }
 
 func (h *PublishHook) ID() string {
@@ -32,6 +32,7 @@ func (h *PublishHook) Init(config any) error {
 
 func (h *PublishHook) OnPublish(cl *mqtt.Client, pk packets.Packet) (packets.Packet, error) {
 	h.Log.Info("Received from client", "client", cl.ID, "topic", pk.TopicName, "payload", string(pk.Payload))
+	h.Store.Publish(cl.ID, pk.TopicName)
 
 	matched := false
 	for _, route := range h.Routes {
