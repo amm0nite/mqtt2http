@@ -93,3 +93,10 @@ func (c *HTTPClient) Publish(url string, topic string, payload []byte) error {
 
 	return nil
 }
+
+func (c *HTTPClient) NoMatch(topic string) {
+	labels := prometheus.Labels{
+		"topic": topic,
+	}
+	c.Metrics.noMatchCounter.With(labels).Inc()
+}

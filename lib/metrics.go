@@ -11,6 +11,7 @@ type Metrics struct {
 	publishCounter      *prometheus.CounterVec
 	forwardCounter      *prometheus.CounterVec
 	subscribeCounter    *prometheus.CounterVec
+	noMatchCounter      *prometheus.CounterVec
 }
 
 func NewMetrics(reg prometheus.Registerer) *Metrics {
@@ -51,6 +52,14 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 		prometheus.CounterOpts{
 			Namespace: "mqtt2http",
 			Name:      "subscribe_count",
+		},
+		[]string{"topic"},
+	)
+
+	metrics.noMatchCounter = promauto.With(reg).NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: "mqtt2http",
+			Name:      "no_match_count",
 		},
 		[]string{"topic"},
 	)

@@ -56,6 +56,7 @@ func (h *PublishHook) OnPublish(cl *mqtt.Client, pk packets.Packet) (packets.Pac
 
 	if !matched {
 		h.Log.Info("No route match", "topic", pk.TopicName)
+		h.HTTPClient.NoMatch(pk.TopicName)
 	}
 
 	return pk, nil
