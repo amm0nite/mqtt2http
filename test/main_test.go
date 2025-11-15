@@ -1,7 +1,11 @@
 package test
 
 import (
+	"fmt"
+	"io"
 	"mqtt2http/broker"
+	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -79,5 +83,19 @@ func TestPublishIsForwardedToHTTP(t *testing.T) {
 		}
 	case <-time.After(3 * time.Second):
 		t.Fatal("timed out waiting for forwarded request")
+	}
+
+	// Check the content of the clients endpoint
+	resp, err := http.Get(fmt.Sprintf("http://%s/clients", apiAddr))
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	defer resp.Body.Close()
+	content, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("response read failed: %v", err)
+	}
+	if !strings.Contains(string(content), "\"id\":\"it-test\",\"username\":\"testClient\",\"subscriptions\":[\"devices/42/state\"],\"publications\":{\"devices/42/state\":1}") {
+		t.Fatalf("unexpected content from the clients endpoint")
 	}
 }

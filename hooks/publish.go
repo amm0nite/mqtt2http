@@ -10,9 +10,9 @@ import (
 
 type PublishHook struct {
 	mqtt.HookBase
-	Client     *lib.Client
-	DefaultURL string
+	HTTPClient *lib.HTTPClient
 	Routes     []lib.Route
+	Store      *lib.ClientStore
 }
 
 func (h *PublishHook) ID() string {
@@ -32,6 +32,7 @@ func (h *PublishHook) Init(config any) error {
 
 func (h *PublishHook) OnPublish(cl *mqtt.Client, pk packets.Packet) (packets.Packet, error) {
 	h.Log.Info("Received from client", "client", cl.ID, "topic", pk.TopicName, "payload", string(pk.Payload))
+	h.Store.Publish(cl.ID, pk.TopicName)
 
 	matched := false
 	for _, route := range h.Routes {
@@ -45,7 +46,7 @@ func (h *PublishHook) OnPublish(cl *mqtt.Client, pk packets.Packet) (packets.Pac
 			if route.URL == "" {
 				break
 			}
-			err := h.Client.Publish(route.URL, pk.TopicName, pk.Payload)
+			err := h.HTTPClient.Publish(route.URL, pk.TopicName, pk.Payload)
 			if err != nil {
 				h.Log.Error("Failed to post on publish", "err", err, "URL", route.URL)
 			}
@@ -55,6 +56,7 @@ func (h *PublishHook) OnPublish(cl *mqtt.Client, pk packets.Packet) (packets.Pac
 
 	if !matched {
 		h.Log.Info("No route match", "topic", pk.TopicName)
+		h.HTTPClient.NoMatch(pk.TopicName)
 	}
 
 	return pk, nil

@@ -6,29 +6,62 @@ import (
 )
 
 type Metrics struct {
-	publishCounter      *prometheus.CounterVec
+	sessionGauge        prometheus.Gauge
 	authenticateCounter *prometheus.CounterVec
+	publishCounter      *prometheus.CounterVec
+	forwardCounter      *prometheus.CounterVec
+	subscribeCounter    *prometheus.CounterVec
+	noMatchCounter      *prometheus.CounterVec
 }
 
 func NewMetrics(reg prometheus.Registerer) *Metrics {
 	metrics := &Metrics{}
 
-	metrics.publishCounter = promauto.With(reg).NewCounterVec(
-		prometheus.CounterOpts{
+	metrics.sessionGauge = promauto.With(reg).NewGauge(
+		prometheus.GaugeOpts{
 			Namespace: "mqtt2http",
-			Subsystem: "publish",
-			Name:      "count",
+			Name:      "sessions",
 		},
-		[]string{"topic", "url", "code"},
 	)
 
 	metrics.authenticateCounter = promauto.With(reg).NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: "mqtt2http",
-			Subsystem: "authenticate",
-			Name:      "count",
+			Name:      "authenticate_count",
 		},
 		[]string{"url", "code"},
+	)
+
+	metrics.publishCounter = promauto.With(reg).NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: "mqtt2http",
+			Name:      "publish_count",
+		},
+		[]string{"topic"},
+	)
+
+	metrics.forwardCounter = promauto.With(reg).NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: "mqtt2http",
+			Name:      "forward_count",
+		},
+		[]string{"url", "code"},
+	)
+
+	metrics.subscribeCounter = promauto.With(reg).NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: "mqtt2http",
+			Name:      "subscribe_count",
+		},
+		[]string{"topic"},
+	)
+
+	metrics.noMatchCounter = promauto.With(reg).NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: "mqtt2http",
+			Name:      "no_match_count",
+		},
+		[]string{"topic"},
 	)
 
 	return metrics

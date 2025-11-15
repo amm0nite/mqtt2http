@@ -11,58 +11,75 @@ import (
 
 type Controller struct {
 	server   *mqtt.Server
-	client   *lib.Client
+	store    *lib.ClientStore
 	password string
 }
 
-func CreateController(server *mqtt.Server, client *lib.Client, password string) *Controller {
-	controller := &Controller{server: server, client: client, password: password}
-	return controller
+func NewController(server *mqtt.Server, store *lib.ClientStore, password string) *Controller {
+	return &Controller{server: server, store: store, password: password}
 }
 
 func (c *Controller) RootHandler() http.HandlerFunc {
-	return func(writer http.ResponseWriter, request *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
 		info, _ := json.Marshal(c.server.Info)
-		writer.Header().Set("Content-Type", "application/json")
-		writer.Write(info)
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(info)
 	}
 }
 
-func (c *Controller) PublishHandler() http.HandlerFunc {
-	return func(writer http.ResponseWriter, request *http.Request) {
+func (c *Controller) withAuthentication(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
 		if c.password != "" {
-			_, password, ok := request.BasicAuth()
+			_, password, ok := r.BasicAuth()
 
 			if !ok {
-				writer.WriteHeader(http.StatusBadRequest)
-				io.WriteString(writer, "Missing basic auth")
+				w.WriteHeader(http.StatusBadRequest)
+				io.WriteString(w, "Missing basic auth")
 				return
 			}
 
 			if password != c.password {
-				writer.WriteHeader(http.StatusForbidden)
-				io.WriteString(writer, "Forbidden")
+				w.WriteHeader(http.StatusForbidden)
+				io.WriteString(w, "Forbidden")
 				return
 			}
 		}
+		next(w, r)
+	}
+}
 
-		topic := request.URL.Query().Get("topic")
+func (c *Controller) PublishHandler() http.HandlerFunc {
+	return c.withAuthentication(func(w http.ResponseWriter, r *http.Request) {
+		topic := r.URL.Query().Get("topic")
 		if topic == "" {
-			writer.WriteHeader(http.StatusBadRequest)
-			io.WriteString(writer, "Missing topic")
+			w.WriteHeader(http.StatusBadRequest)
+			io.WriteString(w, "Missing topic")
 			return
 		}
 
-		defer request.Body.Close()
-		message, err := io.ReadAll(request.Body)
+		defer r.Body.Close()
+		message, err := io.ReadAll(r.Body)
 		if err != nil {
-			writer.WriteHeader(http.StatusInternalServerError)
-			io.WriteString(writer, err.Error())
+			w.WriteHeader(http.StatusInternalServerError)
+			io.WriteString(w, err.Error())
 			return
 		}
 
 		c.server.Log.Info("Publish message", "topic", topic)
 		c.server.Publish(topic, message, false, 0)
-		writer.Write(message)
-	}
+		w.Write(message)
+	})
+}
+
+func (c *Controller) DumpHandler() http.HandlerFunc {
+	return c.withAuthentication(func(w http.ResponseWriter, r *http.Request) {
+		data, err := c.store.Export()
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			io.WriteString(w, "failed to export")
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(data)
+	})
 }
