@@ -82,7 +82,7 @@ func (c *HTTPClient) Publish(url string, topic string, payload []byte) error {
 	}
 
 	labels := prometheus.Labels{
-		"url":  url,
+		"url":  publishURL,
 		"code": strconv.Itoa(res.StatusCode),
 	}
 	c.Metrics.forwardCounter.With(labels).Inc()
