@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"sync"
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 type ClientStore struct {
@@ -46,7 +48,11 @@ func (s *ClientStore) Subscribe(id string, topic string) {
 	if ok {
 		client.Subscribtions = append(client.Subscribtions, topic)
 		client.LastActivityAt = time.Now()
+
 	}
+
+	labels := prometheus.Labels{"topic": topic}
+	s.metrics.subscribeCounter.With(labels).Inc()
 }
 
 func (s *ClientStore) Publish(id string, topic string) {
@@ -59,6 +65,9 @@ func (s *ClientStore) Publish(id string, topic string) {
 		client.Publications[topic] = value + 1
 		client.LastActivityAt = time.Now()
 	}
+
+	labels := prometheus.Labels{"topic": topic}
+	s.metrics.publishCounter.With(labels).Inc()
 }
 
 func (s *ClientStore) Export() ([]byte, error) {

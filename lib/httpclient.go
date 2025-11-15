@@ -82,11 +82,10 @@ func (c *HTTPClient) Publish(url string, topic string, payload []byte) error {
 	}
 
 	labels := prometheus.Labels{
-		"url":   url,
-		"topic": topic,
-		"code":  strconv.Itoa(res.StatusCode),
+		"url":  url,
+		"code": strconv.Itoa(res.StatusCode),
 	}
-	c.Metrics.publishCounter.With(labels).Inc()
+	c.Metrics.forwardCounter.With(labels).Inc()
 
 	if res.StatusCode < 200 || res.StatusCode > 299 {
 		return fmt.Errorf("publish post failed with status %d", res.StatusCode)
