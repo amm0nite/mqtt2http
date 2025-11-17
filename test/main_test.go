@@ -70,6 +70,11 @@ func TestPublishIsForwardedToHTTP(t *testing.T) {
 		t.Fatalf("client reports not connected")
 	}
 
+	// Subscribe to a topic
+	if tok := client.Subscribe("topic/test", 0, nil); !tok.WaitTimeout(5*time.Second) || tok.Error() != nil {
+		t.Fatalf("subscribe failed: %v", tok.Error())
+	}
+
 	// Publish and assert HTTP saw the payload.
 	payload := []byte(`{"hello":"world"}`)
 	if tok := client.Publish("devices/42/state", 0, false, payload); !tok.WaitTimeout(5*time.Second) || tok.Error() != nil {
@@ -95,7 +100,7 @@ func TestPublishIsForwardedToHTTP(t *testing.T) {
 	if err != nil {
 		t.Fatalf("response read failed: %v", err)
 	}
-	if !strings.Contains(string(content), "\"id\":\"it-test\",\"username\":\"testClient\",\"subscriptions\":[\"devices/42/state\"],\"publications\":{\"devices/42/state\":1}") {
-		t.Fatalf("unexpected content from the clients endpoint")
+	if !strings.Contains(string(content), "\"id\":\"it-test\",\"username\":\"testClient\",\"subscriptions\":[\"topic/test\"],\"publications\":{\"devices/42/state\":1}") {
+		t.Fatalf("unexpected content from the clients endpoint, got %s", content)
 	}
 }
