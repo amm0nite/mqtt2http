@@ -22,6 +22,7 @@ func (h *SessionHook) Provides(b byte) bool {
 	return bytes.Contains([]byte{
 		mqtt.OnConnectAuthenticate,
 		mqtt.OnACLCheck,
+		mqtt.OnSubscribe,
 		mqtt.OnDisconnect,
 	}, []byte{b})
 }
@@ -53,8 +54,17 @@ func (h *SessionHook) OnConnectAuthenticate(cl *mqtt.Client, pk packets.Packet) 
 
 func (h *SessionHook) OnACLCheck(cl *mqtt.Client, topic string, write bool) bool {
 	h.Log.Debug("ACLCheck", "client", cl.ID, "topic", topic, "write", write)
-	h.Store.Subscribe(cl.ID, topic)
 	return true
+}
+
+func (h *SessionHook) OnSubscribe(cl *mqtt.Client, pk packets.Packet) packets.Packet {
+	h.Log.Debug("Subscribe", "client", cl.ID, "topic", pk.TopicName)
+	topics := []string{}
+	for _, sub := range pk.Filters {
+		topics = append(topics, sub.Filter)
+	}
+	h.Store.Subscribe(cl.ID, topics)
+	return pk
 }
 
 func (h *SessionHook) OnDisconnect(cl *mqtt.Client, err error, expire bool) {
