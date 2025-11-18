@@ -40,11 +40,21 @@ MQTT2HTTP_API_PASSWORD=somesecret
 
 ### HTTP to MQTT
 
-* Publish messages to MQTT topics using the built-in REST API. Requests must include HTTP Basic Auth with the password set in `MQTT2HTTP_API_PASSWORD` (the username is ignored). The default password is random at start-up, so set it explicitly if you want to call the API.
+* Publish messages or inspect connected clients using the built-in REST API. Requests must include HTTP Basic Auth with the password set in `MQTT2HTTP_API_PASSWORD` (the username is ignored). The default password is random at start-up, so set it explicitly if you want to call the API.
+
+`/publish` lets you inject payloads into MQTT topics:
 
 ```bash
 curl --user user:somesecret -X POST -d '{"test": true}' http://mqtt2http:8080/publish?topic=hello
 ```
+
+`/clients` dumps the active MQTT sessions, including their username, subscriptions, publication counters, and timestamps:
+
+```bash
+curl --user user:somesecret http://mqtt2http:8080/clients
+```
+
+The endpoint responds with a JSON array of objects matching the structure of `lib.Client` (fields: `id`, `username`, `subscriptions`, `publications`, `connected_at`, `last_activity_at`).
 
 ## Docker
 
@@ -112,7 +122,11 @@ Routes are evaluated in order and the first match wins. If no route matches, the
 
 Prometheus metrics are available at `/metrics` on the configured metrics address (`MQTT2HTTP_METRICS_HTTP_LISTEN_ADDRESS`).
 
-| Metric                         | Type    | Labels          | Description                                                                                         |
-| ------------------------------ | ------- | --------------- | --------------------------------------------------------------------------------------------------- |
-| `mqtt2http_publish_count`      | Counter | `topic`, `code` | Counts forwarded MQTT `PUBLISH` messages as HTTP `POST` requests, labeled by topic and HTTP status. |
-| `mqtt2http_authenticate_count` | Counter | `code`          | Counts HTTP authentication attempts during MQTT `CONNECT`, labeled by HTTP status code.             |
+| Metric                        | Type   | Labels        | Description                                                                                          |
+| ----------------------------- | ------ | ------------- | ---------------------------------------------------------------------------------------------------- |
+| `mqtt2http_sessions`          | Gauge  | _none_        | Tracks the current number of connected MQTT sessions.                                                |
+| `mqtt2http_authenticate_count`| Counter| `url`, `code` | Counts HTTP Basic Auth attempts made during MQTT `CONNECT`, labeled by authorization URL and status. |
+| `mqtt2http_publish_count`     | Counter| `topic`       | Counts MQTT `PUBLISH` packets received per topic.                                                    |
+| `mqtt2http_forward_count`     | Counter| `url`, `code` | Counts HTTP requests sent while forwarding MQTT payloads, labeled by the resolved URL and status.    |
+| `mqtt2http_subscribe_count`   | Counter| `topic`       | Counts subscription requests per topic.                                                              |
+| `mqtt2http_no_match_count`    | Counter| `topic`       | Counts messages for which no route was found.                                                        |
