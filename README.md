@@ -1,6 +1,7 @@
-# MQTT2HTTP
-
-[![GitHub Release](https://img.shields.io/github/v/release/amm0nite/mqtt2http)](https://github.com/amm0nite/mqtt2http/releases) [![Docker Pulls](https://img.shields.io/docker/pulls/amm0nite/mqtt2http)](https://hub.docker.com/r/amm0nite/mqtt2http)
+MQTT2HTTP
+[![GitHub Release](https://img.shields.io/github/v/release/amm0nite/mqtt2http)](https://github.com/amm0nite/mqtt2http/releases)
+[![Docker Pulls](https://img.shields.io/docker/pulls/amm0nite/mqtt2http)](https://hub.docker.com/r/amm0nite/mqtt2http)
+=========
 
 MQTT broker that forwards topics to HTTP endpoints with configurable routing.
 
