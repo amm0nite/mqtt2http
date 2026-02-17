@@ -12,6 +12,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+var version string
+
 func main() {
 	err := godotenv.Load()
 	if err != nil {
@@ -22,7 +24,12 @@ func main() {
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 
+	if version == "" {
+		version = "dev"
+	}
+
 	config := &broker.BrokerConfig{
+		Version:         version,
 		TCPAddr:         getEnv("MQTT2HTTP_MQTT_LISTEN_ADDRESS", ":1883"),
 		HTTPAddr:        getEnv("MQTT2HTTP_HTTP_LISTEN_ADDRESS", ":8080"),
 		AuthorizeURL:    getEnv("MQTT2HTTP_AUTHORIZE_URL", "http://127.0.0.1/authorize"),

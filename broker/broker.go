@@ -34,6 +34,8 @@ func NewBroker(config *BrokerConfig) *Broker {
 func (b *Broker) Start(reg prometheus.Registerer) error {
 	var err error
 
+	b.server.Log.Info("Starting MQTT2HTTP", "version", b.config.Version)
+
 	metrics := lib.NewMetrics(reg)
 
 	// Create HTTP Client
@@ -87,7 +89,7 @@ func (b *Broker) Start(reg prometheus.Registerer) error {
 	go func() {
 		b.server.Log.Info("Starting API HTTP server", "addr", b.config.HTTPAddr)
 
-		controller := api.NewController(b.server, clientStore, b.config.APIPassword)
+		controller := api.NewController(b.config.Version, b.server, clientStore, b.config.APIPassword)
 
 		mux := http.NewServeMux()
 		mux.HandleFunc("/", controller.RootHandler())

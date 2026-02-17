@@ -7,23 +7,41 @@ import (
 	"net/http"
 
 	mqtt "github.com/mochi-mqtt/server/v2"
+	"github.com/mochi-mqtt/server/v2/system"
 )
 
 type Controller struct {
+	version  string
 	server   *mqtt.Server
 	store    *lib.ClientStore
 	password string
 }
 
-func NewController(server *mqtt.Server, store *lib.ClientStore, password string) *Controller {
-	return &Controller{server: server, store: store, password: password}
+type AppInfo struct {
+	Version string       `json:"version"`
+	Broker  *system.Info `json:"broker"`
+}
+
+func NewController(version string, server *mqtt.Server, store *lib.ClientStore, password string) *Controller {
+	return &Controller{version: version, server: server, store: store, password: password}
 }
 
 func (c *Controller) RootHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		info, _ := json.Marshal(c.server.Info)
+		info := &AppInfo{
+			Version: c.version,
+			Broker:  c.server.Info.Clone(),
+		}
+
+		data, err := json.Marshal(info)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			io.WriteString(w, err.Error())
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
-		w.Write(info)
+		w.Write(data)
 	}
 }
 
