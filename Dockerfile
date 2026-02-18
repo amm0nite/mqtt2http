@@ -1,6 +1,8 @@
 # Build stage
 FROM golang:1.24.3-alpine AS build
 
+ARG BUILD_VERSION=dev
+
 WORKDIR /workspace
 
 RUN apk add --no-cache ca-certificates
@@ -11,7 +13,7 @@ COPY go.mod go.sum ./
 RUN go mod download && go mod verify
 
 COPY . .
-RUN go build -v -o app ./cmd/mqtt2http.go
+RUN go build -v -ldflags "-X main.version=$BUILD_VERSION" -o app ./cmd/mqtt2http.go
 
 # Run stage
 FROM alpine

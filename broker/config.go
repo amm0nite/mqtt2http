@@ -10,6 +10,7 @@ import (
 )
 
 type BrokerConfig struct {
+	Version         string
 	TCPAddr         string
 	HTTPAddr        string
 	AuthorizeURL    string
