@@ -63,6 +63,15 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      - name: Get last git tag
+        id: last_tag
+        run: |
+          if tag="$(sh scripts/get-last-git-tag.sh)"; then
+            echo "value=$tag" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=0.0.0" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
@@ -71,6 +80,7 @@ jobs:
           platforms: linux/amd64,linux/arm64,linux/arm/v7
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: BUILD_VERSION=${{ steps.last_tag.outputs.value }}-dev
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
