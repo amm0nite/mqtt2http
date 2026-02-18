@@ -1,7 +1,7 @@
 # Build stage
 FROM golang:1.24.3-alpine AS build
 
-ARG BUILD_VERSION="dev"
+ARG BUILD_VERSION=dev
 
 WORKDIR /workspace
 
