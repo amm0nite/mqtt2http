@@ -43,7 +43,9 @@ MQTT2HTTP_API_PASSWORD=somesecret
 
 ### HTTP to MQTT
 
-* Publish messages or inspect connected clients using the built-in REST API. Requests must include HTTP Basic Auth with the password set in `MQTT2HTTP_API_PASSWORD` (the username is ignored). The default password is random at start-up, so set it explicitly if you want to call the API.
+* Publish messages into MQTT topics using the built-in REST API.
+* Requests to `/publish` must include HTTP Basic Auth with the password set in `MQTT2HTTP_API_PASSWORD` (the username is ignored).
+* If `MQTT2HTTP_API_PASSWORD` is not set, a random password is generated at start-up and is not exposed by the API, so set it explicitly if you want to use the authenticated endpoints.
 
 `/publish` lets you inject payloads into MQTT topics:
 
@@ -51,11 +53,21 @@ MQTT2HTTP_API_PASSWORD=somesecret
 curl --user user:somesecret -X POST -d '{"test": true}' http://mqtt2http:8080/publish?topic=hello
 ```
 
+### Information endpoints
+
+`/` returns the application version and broker runtime information:
+
+```bash
+curl http://mqtt2http:8080/
+```
+
 `/clients` dumps the active MQTT sessions, including their username, subscriptions, publication counters, and timestamps:
 
 ```bash
 curl --user user:somesecret http://mqtt2http:8080/clients
 ```
+
+Requests to `/clients` must include HTTP Basic Auth with the password set in `MQTT2HTTP_API_PASSWORD` (the username is ignored).
 
 The endpoint responds with a JSON array of objects matching the structure of `lib.Client` (fields: `id`, `username`, `subscriptions`, `publications`, `connected_at`, `last_activity_at`).
 
@@ -73,6 +85,7 @@ mqtt2http:
   environment:
     MQTT2HTTP_AUTHORIZE_URL: http://auth.service/
     MQTT2HTTP_PUBLISH_URL: http://backend.service/api/{topic}
+    MQTT2HTTP_API_PASSWORD: somesecret
 ```
 
 To use a specific version:
@@ -83,17 +96,17 @@ image: docker.io/amm0nite/mqtt2http:1.0.0
 
 ## Configuration
 
-| Variable                                | Default                      | Description                                                                                    |
-| --------------------------------------- | ---------------------------- | ---------------------------------------------------------------------------------------------- |
-| `MQTT2HTTP_MQTT_LISTEN_ADDRESS`         | `:1883`                      | Address where the MQTT broker listens (host\:port).                                            |
-| `MQTT2HTTP_HTTP_LISTEN_ADDRESS`         | `:8080`                      | Address for the HTTP REST API (hosts `/publish`, `/clients`, and `/`).                          |
-| `MQTT2HTTP_AUTHORIZE_URL`               | `http://127.0.0.1/authorize` | HTTP Basic Auth endpoint for authorizing `CONNECT` requests. A 200/201 response allows access. |
-| `MQTT2HTTP_PUBLISH_URL`                 | `http://127.0.0.1/publish/{topic}` | Template URL for forwarding `PUBLISH` messages; `{topic}` is replaced dynamically. When no routes file is loaded, this URL is used for a catch-all default route. |
-| `MQTT2HTTP_CONTENT_TYPE`                | `application/octet-stream`   | `Content-Type` header used in forwarded HTTP `POST` requests. E.g., `application/json`.        |
-| `MQTT2HTTP_TOPIC_HEADER`                | `X-Topic`                    | Name of the HTTP header that carries the MQTT topic.                                           |
-| `MQTT2HTTP_METRICS_HTTP_LISTEN_ADDRESS` | `:9090`                      | Address for serving Prometheus metrics at the `/metrics` endpoint.                             |
-| `MQTT2HTTP_ROUTES_FILE_PATH` | `routes.yaml` | Path for the yaml file that defines all routes.
-| `MQTT2HTTP_API_PASSWORD` | random value | Password used to secure the API endpoints.
+| Variable                                | Default                            | Description |
+| --------------------------------------- | ---------------------------------- | ----------- |
+| `MQTT2HTTP_MQTT_LISTEN_ADDRESS`         | `:1883`                            | Address where the MQTT broker listens (host\:port). |
+| `MQTT2HTTP_HTTP_LISTEN_ADDRESS`         | `:8080`                            | Address for the HTTP REST API (hosts `/`, `/publish`, and `/clients`). |
+| `MQTT2HTTP_AUTHORIZE_URL`               | `http://127.0.0.1/authorize`       | HTTP endpoint used to authorize MQTT `CONNECT` requests. The broker sends an HTTP `POST` with Basic Auth credentials and no body. A `200` or `201` response allows access. |
+| `MQTT2HTTP_PUBLISH_URL`                 | `http://127.0.0.1/publish/{topic}` | Template URL for forwarding `PUBLISH` messages. `{topic}` is replaced once in the outgoing URL. When no routes file is loaded, this URL is used for a catch-all default route. |
+| `MQTT2HTTP_CONTENT_TYPE`                | `application/octet-stream`         | `Content-Type` header used in forwarded HTTP `POST` requests. E.g. `application/json`. |
+| `MQTT2HTTP_TOPIC_HEADER`                | `X-Topic`                          | Name of the HTTP header that carries the MQTT topic on forwarded publish requests. |
+| `MQTT2HTTP_METRICS_HTTP_LISTEN_ADDRESS` | `:9090`                            | Address for serving Prometheus metrics at the `/metrics` endpoint. |
+| `MQTT2HTTP_ROUTES_FILE_PATH`            | `routes.yaml`                      | Path to the YAML file that defines routing rules loaded at start-up. |
+| `MQTT2HTTP_API_PASSWORD`                | random value                       | Password used to secure `/publish` and `/clients`. If unset, a random password is generated at start-up. |
 
 ## Routing
 
@@ -120,6 +133,8 @@ Example `routes.yaml`:
 ```
 
 Routes are evaluated in order and the first match wins. If no route matches, the broker logs the miss and no HTTP request is sent. When the routes file is empty (or missing) and `MQTT2HTTP_PUBLISH_URL` is configured, a default catch-all route using that URL is created automatically.
+
+Both the authorization and publish HTTP requests use a 5 second client timeout.
 
 ## Metrics
 
