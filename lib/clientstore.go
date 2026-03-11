@@ -51,14 +51,14 @@ func (s *ClientStore) Subscribe(id string, topics []string) {
 
 	for _, topic := range topics {
 		found := false
-		for _, sub := range client.Subscribtions {
+		for _, sub := range client.Subscriptions {
 			if sub == topic {
 				found = true
 				break
 			}
 		}
 		if !found {
-			client.Subscribtions = append(client.Subscribtions, topic)
+			client.Subscriptions = append(client.Subscriptions, topic)
 		}
 		labels := prometheus.Labels{"topic": topic}
 		s.metrics.subscribeCounter.With(labels).Inc()
