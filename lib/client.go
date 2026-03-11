@@ -5,7 +5,7 @@ import "time"
 type Client struct {
 	ID             string           `json:"id"`
 	Username       string           `json:"username"`
-	Subscribtions  []string         `json:"subscriptions"`
+	Subscriptions  []string         `json:"subscriptions"`
 	Publications   map[string]int64 `json:"publications"`
 	ConnectedAt    time.Time        `json:"connected_at"`
 	LastActivityAt time.Time        `json:"last_activity_at"`
