@@ -36,8 +36,11 @@ func (s *ClientStore) Leave(id string) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	delete(s.clients, id)
-	s.metrics.sessionGauge.Dec()
+	_, known := s.clients[id]
+	if known {
+		delete(s.clients, id)
+		s.metrics.sessionGauge.Dec()
+	}
 }
 
 func (s *ClientStore) Subscribe(id string, topics []string) {
